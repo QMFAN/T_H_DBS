@@ -35,7 +35,8 @@ const MultiAreaTimelineECharts: FC<Props> = ({ areas, refreshKey }) => {
         if (pa.num !== pb.num) return pa.num - pb.num;
         return pa.suffix.localeCompare(pb.suffix);
       });
-      setSelectedIds(sorted.map((a) => a.areaId));
+      const maxSelect = 50;
+      setSelectedIds(sorted.slice(0, maxSelect).map((a) => a.areaId));
     }
   }, [areas]);
 
@@ -43,13 +44,15 @@ const MultiAreaTimelineECharts: FC<Props> = ({ areas, refreshKey }) => {
     const fetchData = async () => {
       const list: Record<number, SegmentItem[]> = {};
       for (const id of selectedIds) {
-        const res = await analyticsService.getAreaSegments({ areaId: id, granularity: 'record', gapToleranceMinutes: 20 });
+        const params: any = { areaId: id, granularity: 'day' };
+        if (zoom[0] && zoom[1]) { params.start = zoom[0].valueOf(); params.end = zoom[1].valueOf(); }
+        const res = await analyticsService.getAreaSegments(params);
         list[id] = res.segments;
       }
       setSegmentsByArea(list);
     };
     if (selectedIds.length) void fetchData();
-  }, [selectedIds, refreshKey]);
+  }, [selectedIds, refreshKey, zoom]);
 
   const globalRange = useMemo(() => {
     const segs = Object.values(segmentsByArea).flat();

@@ -105,11 +105,19 @@ const ImportPage: FC = () => {
 
   
 
+  const onlyExcel = useCallback((files: UploadFile[]) => {
+    return files.filter((f) => {
+      const name = (f.originFileObj as File | undefined)?.name?.toLowerCase() || f.name?.toLowerCase() || ''
+      return name.endsWith('.xls') || name.endsWith('.xlsx')
+    })
+  }, [])
+
+
   const toRcFiles = useCallback((items: UploadFile[]): RcFile[] => {
-    return items
+    return onlyExcel(items)
       .map((item) => item.originFileObj)
       .filter((file): file is RcFile => Boolean(file) && typeof (file as RcFile).uid === 'string');
-  }, []);
+  }, [onlyExcel]);
 
   const handleUpload = useCallback(async () => {
     const files = toRcFiles(fileList);
@@ -496,7 +504,11 @@ const ImportPage: FC = () => {
                 accept=".xls,.xlsx"
                 beforeUpload={() => false}
                 fileList={fileList}
-                onChange={({ fileList: nextList }) => setFileList(nextList)}
+                onChange={({ fileList: nextList }) => setFileList(onlyExcel(nextList))}
+                onRemove={(file) => {
+                  setFileList(prev => prev.filter(f => f.uid !== file.uid))
+                  return true
+                }}
                 showUploadList={{ showRemoveIcon: true }}
                 disabled={isUploading}
               >
@@ -507,9 +519,19 @@ const ImportPage: FC = () => {
                   拖拽或点击上传 Excel
                 </Typography.Title>
                 <Typography.Paragraph type="secondary" style={{ margin: 0 }}>
-                  支持 .xlsx / .xls，文件将自动存储并生成下载链接 ({config.importsBaseUrl})
+                  支持 .xlsx / .xls；可拖拽文件或点击下方按钮选择文件夹批量导入（自动识别文件夹内的 Excel 文件）。文件将存储并生成下载链接 ({config.importsBaseUrl})
                 </Typography.Paragraph>
               </Upload.Dragger>
+              <div style={{ marginTop: 8, textAlign: 'right' }}>
+                <Upload
+                  directory
+                  beforeUpload={() => false}
+                  showUploadList={false}
+                  onChange={({ fileList: dirFiles }) => setFileList(onlyExcel(dirFiles))}
+                >
+                  <Button icon={<UploadOutlined />}>选择文件夹</Button>
+                </Upload>
+              </div>
               {isUploading && (
                 <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8 }}>
                   <Flex vertical align="center" gap={12}>

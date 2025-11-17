@@ -36,12 +36,12 @@ export const analyticsService = {
   },
 
   async getAreas(params: { areaIds?: number[]; start?: number; end?: number; page?: number; pageSize?: number; sort?: 'count' | 'name' | 'min' | 'max'; order?: 'asc' | 'desc' }) {
-    const { data } = await http.get<AreasResponse>('/analytics/areas', { params: { ...params, areaIds: params.areaIds?.join(',') } });
+    const { data } = await http.get<AreasResponse>('/analytics/areas', { params: { ...params, areaIds: params.areaIds?.join(',') }, timeout: 60000 });
     return data;
   },
 
   async getAreaSegments(params: { areaId: number; start?: number; end?: number; granularity?: 'record' | 'day'; limit?: number; gapToleranceMinutes?: number }) {
-    const { data } = await http.get<{ segments: SegmentItem[]; segmentsCount: number }>('/analytics/area/segments', { params });
+    const { data } = await http.get<{ segments: SegmentItem[]; segmentsCount: number }>('/analytics/area/segments', { params, timeout: 60000 });
     return data;
   },
 

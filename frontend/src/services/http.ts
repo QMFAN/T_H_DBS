@@ -33,7 +33,7 @@ http.interceptors.response.use(
       // eslint-disable-next-line no-console
       console.error('Network Error:', error.message);
     }
-    const status = error.response.status;
+    const status = error.response?.status;
     if (status === 401) {
       const refresh = localStorage.getItem('refresh_token');
       if (refresh && !(error.config as any).__retried) {

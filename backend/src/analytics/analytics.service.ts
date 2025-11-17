@@ -121,20 +121,17 @@ export class AnalyticsService {
     const segmentsCounts = await Promise.all(
       list.map(async (it) => {
         if (!it.timeMin || !it.timeMax || it.count === 0) return 0;
-        const qb = this.dataRepo
-          .createQueryBuilder('s')
-          .select(['s.timestamp'])
-          .where('s.area_id = :areaId', { areaId: it.areaId })
-          .andWhere('s.timestamp BETWEEN :start AND :end', { start: it.timeMin, end: it.timeMax })
-          .orderBy('s.timestamp', 'ASC');
-        const rows = await qb.getRawMany<{ s_timestamp: Date }>();
-        const gapMs = 20 * 60 * 1000; // 20分钟容忍间隔
+        // 使用日粒度统计，显著降低行数
+        const rows: Array<{ d: string }> = await this.dataRepo.query(
+          'SELECT DATE(timestamp) AS d FROM sensor_data WHERE area_id = ? AND timestamp BETWEEN ? AND ? GROUP BY d ORDER BY d ASC',
+          [it.areaId, it.timeMin, it.timeMax],
+        );
+        const dayMs = 24 * 60 * 60 * 1000;
         let segments = 0;
         let prev: number | null = null;
-        for (const row of rows) {
-          const curDate = row.s_timestamp instanceof Date ? row.s_timestamp : new Date(row.s_timestamp);
-          const cur = curDate.getTime();
-          if (prev === null || cur - prev > gapMs) segments += 1;
+        for (const r of rows) {
+          const cur = new Date(r.d).getTime();
+          if (prev === null || cur - prev > dayMs) segments += 1;
           prev = cur;
         }
         return segments;

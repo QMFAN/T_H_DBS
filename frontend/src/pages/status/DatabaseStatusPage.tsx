@@ -21,9 +21,11 @@ const DatabaseStatusPage: FC = () => {
   const { data: overview } = useQuery({ queryKey: ['analytics:overview'], queryFn: analyticsService.getOverview });
 
 
+  const [areasPage, setAreasPage] = useState(1)
+  const [areasPageSize, setAreasPageSize] = useState(10)
   const { data: areasAll, isLoading: isLoadingAll } = useQuery({
-    queryKey: ['analytics:areas:all', range[0]?.valueOf(), range[1]?.valueOf()],
-    queryFn: () => analyticsService.getAreas({ page: 1, pageSize: 1000, start: range[0]?.valueOf(), end: range[1]?.valueOf(), sort: 'name', order: 'asc' }),
+    queryKey: ['analytics:areas:all', areasPage, areasPageSize, range[0]?.valueOf(), range[1]?.valueOf()],
+    queryFn: () => analyticsService.getAreas({ page: areasPage, pageSize: areasPageSize, start: range[0]?.valueOf(), end: range[1]?.valueOf(), sort: 'name', order: 'asc' }),
   });
 
   const areasAllSorted = useMemo(() => {
@@ -92,13 +94,19 @@ const DatabaseStatusPage: FC = () => {
         </Descriptions>
       </Card>
 
-      <Card title="分区域统计" extra={<RangePicker value={range} onChange={(v) => setRange(v as any)} showTime />}> 
+      <Card title="分区域统计" extra={<RangePicker value={range} onChange={(v) => { setRange(v as any); setAreasPage(1); }} showTime />}> 
         <Table
           rowKey={(r) => String(r.areaId)}
           loading={isLoadingAll}
           columns={columns as any}
           dataSource={areasAllSorted}
-          pagination={false}
+          pagination={{
+            current: areasPage,
+            pageSize: areasPageSize,
+            total: areasAll?.total ?? 0,
+            onChange: (p, ps) => { setAreasPage(p); setAreasPageSize(ps); },
+            showSizeChanger: true,
+          }}
         />
       </Card>
 
