@@ -46,3 +46,4 @@ infra/mysql/prod/conf.d/*.cnf
 # Exports/uploads
 exports/
 uploads/
+旧代码库/
