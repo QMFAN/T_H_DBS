@@ -1,1 +1,0 @@
-{"version":3,"file":"roles.js","sourceRoot":"","sources":["../../src/rbac/roles.ts"],"names":[],"mappings":";;;AAIa,QAAA,gBAAgB,GAA8B;IACzD,KAAK,EAAE,CAAC,QAAQ,EAAE,QAAQ,EAAE,UAAU,EAAE,UAAU,EAAE,OAAO,CAAC;IAC5D,OAAO,EAAE,CAAC,QAAQ,EAAE,QAAQ,EAAE,UAAU,EAAE,UAAU,CAAC;IACrD,IAAI,EAAE,CAAC,UAAU,CAAC;CACnB,CAAA"}
