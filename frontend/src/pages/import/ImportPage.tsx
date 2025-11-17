@@ -1,5 +1,5 @@
-import { Button, Flex, Space, Typography, Upload, Tag, Divider, message, Spin, Empty, Modal, Card, Progress, Checkbox } from 'antd';
-import { UploadOutlined, CloudSyncOutlined, FileSearchOutlined, WarningOutlined } from '@ant-design/icons';
+import { Button, Flex, Space, Typography, Upload, Tag, Divider, message, Spin, Empty, Modal, Card, Progress, Checkbox, Pagination } from 'antd';
+import { UploadOutlined, CloudSyncOutlined, WarningOutlined } from '@ant-design/icons';
 import type { FC } from 'react';
 import { useCallback, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -56,13 +56,15 @@ const ImportPage: FC = () => {
     queryFn: importService.fetchConflicts,
   });
 
-  const { data: history, isLoading: historyLoading } = useQuery({
-    queryKey: ['import-history'],
-    queryFn: () => importService.fetchHistory(),
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(8)
+  const { data: historyPage, isLoading: historyLoading } = useQuery({
+    queryKey: ['import-history', page, pageSize],
+    queryFn: () => importService.fetchHistoryPaged(page, pageSize),
   });
 
   const refreshAfterDelete = useCallback(async () => {
-    await queryClient.refetchQueries({ queryKey: ['import-history'] })
+    await queryClient.refetchQueries({ queryKey: ['import-history', page, pageSize] })
     await queryClient.refetchQueries({ queryKey: ['import-summary'] })
   }, [queryClient])
 
@@ -392,12 +394,12 @@ const ImportPage: FC = () => {
   }, [summary, fileList.length, conflictOverview]);
 
   const historyList = useMemo(() => {
-    return (history ?? []).map((item: ImportHistoryItem) => ({
+    return (historyPage?.items ?? []).map((item: ImportHistoryItem) => ({
       ...item,
       uploadedAtText: dayjs(item.uploadedAt).format('YYYY-MM-DD HH:mm'),
       fileUrl: item.fileUrl ? `${config.importsBaseUrl}${item.fileUrl}` : undefined,
     }));
-  }, [history]);
+  }, [historyPage]);
 
   const isUploading = uploadMutation.isPending;
   
@@ -528,14 +530,25 @@ const ImportPage: FC = () => {
       <SectionCard
         title="导入历史"
         description="查看最近导入记录，可快速定位冲突并决定跳过或覆盖。"
-        extra={<Button icon={<FileSearchOutlined />}>查看全部</Button>}
+        extra={null}
       >
         {historyLoading ? (
           <Flex justify="center" style={{ paddingBlock: 32 }}>
             <Spin />
           </Flex>
         ) : historyList.length ? (
-          <HistoryList items={historyList} onDelete={handleDeleteHistory} />
+          <>
+            <HistoryList items={historyList} onDelete={handleDeleteHistory} />
+            <Flex justify="end" style={{ marginTop: 16 }}>
+              <Pagination
+                current={page}
+                pageSize={pageSize}
+                total={historyPage?.total ?? 0}
+                showSizeChanger
+                onChange={(p, ps) => { setPage(p); setPageSize(ps); }}
+              />
+            </Flex>
+          </>
         ) : (
           <Empty description="暂无导入记录" />
         )}

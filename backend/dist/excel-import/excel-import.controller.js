@@ -47,6 +47,17 @@ let ExcelImportController = ExcelImportController_1 = class ExcelImportControlle
         }
         return this.excelImportService.getImportHistory(parsedLimit);
     }
+    async getHistoryPaged(page, pageSize) {
+        const p = page ? Number(page) : 1;
+        const ps = pageSize ? Number(pageSize) : 10;
+        if (!Number.isFinite(p) || p < 1) {
+            throw new common_1.BadRequestException('page must be >= 1');
+        }
+        if (!Number.isFinite(ps) || ps < 1 || ps > 100) {
+            throw new common_1.BadRequestException('pageSize must be in 1..100');
+        }
+        return this.excelImportService.getImportHistoryPaged(p, ps);
+    }
     async deleteHistory(taskId, deleteFile) {
         if (!taskId) {
             throw new common_1.BadRequestException('taskId is required');
@@ -100,6 +111,14 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], ExcelImportController.prototype, "getHistory", null);
+__decorate([
+    (0, common_1.Get)('history/page'),
+    __param(0, (0, common_1.Query)('page')),
+    __param(1, (0, common_1.Query)('pageSize')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", Promise)
+], ExcelImportController.prototype, "getHistoryPaged", null);
 __decorate([
     (0, common_1.Delete)('history/:taskId'),
     __param(0, (0, common_1.Param)('taskId')),

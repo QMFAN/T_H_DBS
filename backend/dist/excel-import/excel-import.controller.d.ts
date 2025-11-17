@@ -1,5 +1,5 @@
 import { ExcelImportService } from './excel-import.service';
-import type { ImportDashboardSummaryDto, ImportHistoryItemDto, ImportAnomalyOverviewDto, UploadResponseDto, ResolveAnomalyDto, BulkResolveAnomaliesDto } from './dto/import.dto';
+import type { ImportDashboardSummaryDto, ImportHistoryItemDto, ImportAnomalyOverviewDto, UploadResponseDto, ResolveAnomalyDto, BulkResolveAnomaliesDto, PaginatedImportHistoryDto } from './dto/import.dto';
 export declare class ExcelImportController {
     private readonly excelImportService;
     private readonly logger;
@@ -7,6 +7,7 @@ export declare class ExcelImportController {
     private decodeOriginalName;
     getDashboardSummary(): Promise<ImportDashboardSummaryDto>;
     getHistory(limit?: string): Promise<ImportHistoryItemDto[]>;
+    getHistoryPaged(page?: string, pageSize?: string): Promise<PaginatedImportHistoryDto>;
     deleteHistory(taskId: string, deleteFile?: string): Promise<void>;
     getAnomalies(): Promise<ImportAnomalyOverviewDto>;
     bulkResolveLegacy(body: BulkResolveAnomaliesDto): Promise<void>;

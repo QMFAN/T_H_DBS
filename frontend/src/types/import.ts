@@ -58,6 +58,13 @@ export interface ImportHistoryItem {
   overwriteCount?: number;
 }
 
+export interface PaginatedImportHistory {
+  items: ImportHistoryItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
 export interface ImportDashboardSummary {
   pendingFiles: number;
   importedRecords: number;

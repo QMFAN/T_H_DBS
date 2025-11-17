@@ -52,6 +52,17 @@ export interface ImportHistoryItemDto {
   conflicts: number;
   fileUrl?: string;
   uploadedAt: string;
+  anomaliesTotal?: number;
+  anomaliesProcessed?: number;
+  skipCount?: number;
+  overwriteCount?: number;
+}
+
+export interface PaginatedImportHistoryDto {
+  items: ImportHistoryItemDto[];
+  total: number;
+  page: number;
+  pageSize: number;
 }
 
 export interface ImportDashboardSummaryDto {

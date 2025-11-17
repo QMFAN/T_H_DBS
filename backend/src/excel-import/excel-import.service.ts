@@ -241,6 +241,31 @@ export class ExcelImportService implements OnModuleInit {
     }));
   }
 
+  async getImportHistoryPaged(page = 1, pageSize = 10): Promise<{ items: ImportHistoryItemDto[]; total: number; page: number; pageSize: number; }> {
+    const skip = (page - 1) * pageSize;
+    const [tasks, total] = await this.importTaskRepository.findAndCount({
+      order: { createdAt: 'DESC' },
+      take: pageSize,
+      skip,
+    });
+
+    const items = tasks.map((task) => ({
+      id: task.taskId,
+      fileName: task.fileName,
+      imported: task.imported,
+      duplicates: task.duplicates,
+      conflicts: task.conflicts,
+      fileUrl: task.fileUrl ?? undefined,
+      uploadedAt: task.createdAt.toISOString(),
+      anomaliesTotal: task.anomaliesTotal ?? 0,
+      anomaliesProcessed: task.anomaliesProcessed ?? 0,
+      skipCount: task.skipCount ?? 0,
+      overwriteCount: task.overwriteCount ?? 0,
+    }));
+
+    return { items, total, page, pageSize };
+  }
+
   async deleteImportTask(taskId: string, deleteFile: boolean): Promise<void> {
     const task = await this.importTaskRepository.findOne({ where: { taskId } });
     if (!task) {

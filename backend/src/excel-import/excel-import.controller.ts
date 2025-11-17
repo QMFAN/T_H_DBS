@@ -20,6 +20,7 @@ import type {
   UploadResponseDto,
   ResolveAnomalyDto,
   BulkResolveAnomaliesDto,
+  PaginatedImportHistoryDto,
 } from './dto/import.dto';
 
 @Controller('imports')
@@ -56,6 +57,22 @@ export class ExcelImportController {
       throw new BadRequestException('limit must be a positive number');
     }
     return this.excelImportService.getImportHistory(parsedLimit);
+  }
+
+  @Get('history/page')
+  async getHistoryPaged(
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+  ): Promise<PaginatedImportHistoryDto> {
+    const p = page ? Number(page) : 1;
+    const ps = pageSize ? Number(pageSize) : 10;
+    if (!Number.isFinite(p) || p < 1) {
+      throw new BadRequestException('page must be >= 1');
+    }
+    if (!Number.isFinite(ps) || ps < 1 || ps > 100) {
+      throw new BadRequestException('pageSize must be in 1..100');
+    }
+    return this.excelImportService.getImportHistoryPaged(p, ps);
   }
 
   @Delete('history/:taskId')

@@ -59,6 +59,12 @@ export declare class ExcelImportService implements OnModuleInit {
     upload(files: UploadedFileInput[]): Promise<UploadResponseDto>;
     getDashboardSummary(): Promise<ImportDashboardSummaryDto>;
     getImportHistory(limit?: number): Promise<ImportHistoryItemDto[]>;
+    getImportHistoryPaged(page?: number, pageSize?: number): Promise<{
+        items: ImportHistoryItemDto[];
+        total: number;
+        page: number;
+        pageSize: number;
+    }>;
     deleteImportTask(taskId: string, deleteFile: boolean): Promise<void>;
     getAnomalyOverview(): Promise<ImportAnomalyOverviewDto>;
     private buildDuplicateSummary;

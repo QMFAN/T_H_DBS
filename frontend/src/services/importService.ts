@@ -3,6 +3,7 @@ import type {
   ImportConflictOverview,
   ImportDashboardSummary,
   ImportHistoryItem,
+  PaginatedImportHistory,
   ResolveConflictPayload,
   BulkResolveConflictsPayload,
   UploadResponse,
@@ -20,6 +21,10 @@ const importService = {
   },
   async fetchHistory(params?: { limit?: number }): Promise<ImportHistoryItem[]> {
     const { data } = await http.get<ImportHistoryItem[]>('/imports/history', { params });
+    return data;
+  },
+  async fetchHistoryPaged(page: number, pageSize: number): Promise<PaginatedImportHistory> {
+    const { data } = await http.get<PaginatedImportHistory>('/imports/history/page', { params: { page, pageSize } });
     return data;
   },
   async deleteHistoryItem(taskId: string, options?: { deleteFile?: boolean }): Promise<void> {
