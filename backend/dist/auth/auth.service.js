@@ -44,31 +44,70 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthService = void 0;
 const common_1 = require("@nestjs/common");
+const config_1 = require("@nestjs/config");
 const users_service_1 = require("../users/users.service");
 const jwt_1 = require("@nestjs/jwt");
 const crypto = __importStar(require("crypto"));
 let AuthService = class AuthService {
     users;
     jwt;
-    constructor(users, jwt) {
+    config;
+    constructor(users, jwt, config) {
         this.users = users;
         this.jwt = jwt;
+        this.config = config;
     }
     buildWeComLoginUrls(redirect, corpId, agentId) {
         const state = Math.random().toString(36).slice(2);
         const qr_url = `https://open.work.weixin.qq.com/wwopen/sso/qrConnect?appid=${corpId}&agentid=${agentId}&redirect_uri=${encodeURIComponent(redirect)}&state=${state}`;
-        const oauth_url = `https://open.weixin.qq.com/connect/oauth2/authorize?appid=${corpId}&redirect_uri=${encodeURIComponent(redirect)}&response_type=code&scope=snsapi_base&state=${state}#wechat_redirect`;
+        const oauth_url = `https://open.weixin.qq.com/connect/oauth2/authorize?appid=${corpId}&redirect_uri=${encodeURIComponent(redirect)}&response_type=code&scope=snsapi_userinfo&state=${state}#wechat_redirect`;
         return { qr_url, oauth_url, state };
     }
     async handleCallback(code, state) {
         void state;
-        const wecom_user_id = `mock-${code}`;
+        const corpId = this.config.get('WE_COM_CORP_ID') || '';
+        const secret = this.config.get('WE_COM_SECRET') || '';
+        let wecom_user_id = '';
+        let display_name = '';
+        try {
+            if (corpId && secret) {
+                const tRes = await fetch(`https://qyapi.weixin.qq.com/cgi-bin/gettoken?corpid=${encodeURIComponent(corpId)}&corpsecret=${encodeURIComponent(secret)}`);
+                const tJson = await tRes.json();
+                const access = tJson?.access_token;
+                if (access) {
+                    const uRes = await fetch(`https://qyapi.weixin.qq.com/cgi-bin/auth/getuserinfo?access_token=${encodeURIComponent(access)}&code=${encodeURIComponent(code)}`);
+                    const uJson = await uRes.json();
+                    wecom_user_id = uJson?.UserId || uJson?.userid || '';
+                    const user_ticket = uJson?.user_ticket || '';
+                    if (user_ticket) {
+                        const dtRes = await fetch(`https://qyapi.weixin.qq.com/cgi-bin/auth/getuserdetail?access_token=${encodeURIComponent(access)}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_ticket }) });
+                        const dtJson = await dtRes.json();
+                        display_name = dtJson?.name || display_name || '';
+                    }
+                    if (!display_name && wecom_user_id) {
+                        const dRes = await fetch(`https://qyapi.weixin.qq.com/cgi-bin/user/get?access_token=${encodeURIComponent(access)}&userid=${encodeURIComponent(wecom_user_id)}`);
+                        const dJson = await dRes.json();
+                        display_name = dJson?.name || '';
+                    }
+                }
+            }
+        }
+        catch { }
+        if (!wecom_user_id)
+            wecom_user_id = `mock-${code}`;
         let user = await this.users.findByWeComId(wecom_user_id);
         if (!user) {
-            user = await this.users.createUser({ username: wecom_user_id, wecom_user_id, role: 'user', status: 1 });
+            const username = display_name || wecom_user_id;
+            user = await this.users.createUser({ username, wecom_user_id, role: 'user', status: 1 });
+        }
+        else {
+            if (display_name && user.username !== display_name) {
+                await this.users.updateUser(user.id, { username: display_name });
+                user = { ...user, username: display_name };
+            }
         }
         const tokens = this.issueTokens(user);
-        return { access_token: tokens.accessToken, refresh_token: tokens.refreshToken, user };
+        return { access_token: tokens.accessToken, refresh_token: tokens.refreshToken, user: { id: user.id, username: user.username, role: user.role } };
     }
     hashPassword(password) {
         const salt = crypto.randomBytes(16).toString('hex');
@@ -133,6 +172,6 @@ let AuthService = class AuthService {
 exports.AuthService = AuthService;
 exports.AuthService = AuthService = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [users_service_1.UsersService, jwt_1.JwtService])
+    __metadata("design:paramtypes", [users_service_1.UsersService, jwt_1.JwtService, config_1.ConfigService])
 ], AuthService);
 //# sourceMappingURL=auth.service.js.map

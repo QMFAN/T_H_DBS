@@ -13,8 +13,6 @@ const { RangePicker } = DatePicker;
 
 const DatabaseStatusPage: FC = () => {
   const [range, setRange] = useState<[dayjs.Dayjs | null, dayjs.Dayjs | null]>([null, null]);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
   const [selectedArea, setSelectedArea] = useState<AreaItem | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const queryClient = useQueryClient();
@@ -22,13 +20,27 @@ const DatabaseStatusPage: FC = () => {
 
   const { data: overview } = useQuery({ queryKey: ['analytics:overview'], queryFn: analyticsService.getOverview });
 
-  const params = useMemo(() => {
-    const start = range[0] ? range[0].valueOf() : undefined;
-    const end = range[1] ? range[1].valueOf() : undefined;
-    return { start, end, page, pageSize, sort: 'count' as const };
-  }, [range, page, pageSize]);
 
-  const { data: areas, refetch: refetchAreas, isLoading } = useQuery({ queryKey: ['analytics:areas', params], queryFn: () => analyticsService.getAreas(params) });
+  const { data: areasAll, isLoading: isLoadingAll } = useQuery({
+    queryKey: ['analytics:areas:all', range[0]?.valueOf(), range[1]?.valueOf()],
+    queryFn: () => analyticsService.getAreas({ page: 1, pageSize: 1000, start: range[0]?.valueOf(), end: range[1]?.valueOf(), sort: 'name', order: 'asc' }),
+  });
+
+  const areasAllSorted = useMemo(() => {
+    const list = areasAll?.list ?? []
+    const parse = (name: string) => {
+      const m = name.match(/(\d+)([A-Za-z]*)/)
+      const num = m ? parseInt(m[1], 10) : Number.MAX_SAFE_INTEGER
+      const suffix = m ? m[2] : ''
+      return { num, suffix }
+    }
+    return [...list].sort((a, b) => {
+      const pa = parse(a.areaName)
+      const pb = parse(b.areaName)
+      if (pa.num !== pb.num) return pa.num - pb.num
+      return pa.suffix.localeCompare(pb.suffix)
+    })
+  }, [areasAll])
 
   const { data: segmentsData, refetch: refetchSegments } = useQuery({
     queryKey: ['analytics:segments', selectedArea?.areaId, range[0]?.valueOf(), range[1]?.valueOf()],
@@ -83,28 +95,19 @@ const DatabaseStatusPage: FC = () => {
       <Card title="分区域统计" extra={<RangePicker value={range} onChange={(v) => setRange(v as any)} showTime />}> 
         <Table
           rowKey={(r) => String(r.areaId)}
-          loading={isLoading}
+          loading={isLoadingAll}
           columns={columns as any}
-          dataSource={areas?.list ?? []}
-          pagination={{
-            current: areas?.page ?? page,
-            pageSize: areas?.pageSize ?? pageSize,
-            total: areas?.total ?? 0,
-            onChange: (p, ps) => {
-              setPage(p);
-              setPageSize(ps);
-              refetchAreas();
-            },
-          }}
+          dataSource={areasAllSorted}
+          pagination={false}
         />
       </Card>
 
       {/* 多区域时间线（ECharts） */}
-      <MultiAreaTimelineECharts areas={areas?.list ?? []} refreshKey={refreshKey} />
+      <MultiAreaTimelineECharts areas={areasAllSorted} refreshKey={refreshKey} />
 
       {/* 导出工具（主界面） */}
-      <ExportTool areas={areas?.list ?? []} />
-      <DeleteTool areas={areas?.list ?? []} onDeleted={() => {
+      <ExportTool areas={areasAllSorted} />
+      <DeleteTool areas={areasAllSorted} onDeleted={() => {
         queryClient.invalidateQueries({ queryKey: ['analytics:overview'] });
         queryClient.invalidateQueries({ queryKey: ['analytics:areas'] });
         if (selectedArea) setTimeout(() => refetchSegments(), 0);

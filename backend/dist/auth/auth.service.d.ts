@@ -1,9 +1,11 @@
+import { ConfigService } from '@nestjs/config';
 import { UsersService } from '../users/users.service';
 import { JwtService } from '@nestjs/jwt';
 export declare class AuthService {
     private readonly users;
     private readonly jwt;
-    constructor(users: UsersService, jwt: JwtService);
+    private readonly config;
+    constructor(users: UsersService, jwt: JwtService, config: ConfigService);
     buildWeComLoginUrls(redirect: string, corpId: string, agentId: string): {
         qr_url: string;
         oauth_url: string;
@@ -12,7 +14,11 @@ export declare class AuthService {
     handleCallback(code: string, state: string): Promise<{
         access_token: string;
         refresh_token: string;
-        user: import("../entities/user.entity").UserEntity;
+        user: {
+            id: any;
+            username: any;
+            role: any;
+        };
     }>;
     private hashPassword;
     private verifyPassword;

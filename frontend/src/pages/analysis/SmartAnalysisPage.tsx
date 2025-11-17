@@ -31,7 +31,12 @@ const SmartAnalysisPage: FC = () => {
   const cacheLoadedRef = useRef(false);
 
   useEffect(() => {
-    smartAnalysisService.getAreas().then((d) => setAreas(d.areas || []));
+    smartAnalysisService.getAreas().then((d) => {
+      const list = d.areas || []
+      const parse = (name: string) => { const m = name.match(/(\d+)([A-Za-z]*)/); return { num: m ? parseInt(m[1], 10) : Number.MAX_SAFE_INTEGER, suffix: m ? m[2] : '' } }
+      const sorted = [...list].sort((a, b) => { const pa = parse(a.name); const pb = parse(b.name); if (pa.num !== pb.num) return pa.num - pb.num; return pa.suffix.localeCompare(pb.suffix) })
+      setAreas(sorted)
+    });
     const cached = localStorage.getItem('smart_analysis_cache');
     if (cached) {
       const c = JSON.parse(cached);
@@ -275,7 +280,7 @@ const SmartAnalysisPage: FC = () => {
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
           <Form layout="inline" style={{ flex: 1 }}>
             <Form.Item label="区域">
-              <Select style={{ minWidth: 240 }} options={areaOptions} value={area || undefined} onChange={(v) => setArea(v ?? '')} placeholder="选择区域" allowClear />
+              <Select style={{ minWidth: 240 }} options={areaOptions} value={area || undefined} onChange={(v) => setArea(v ?? '')} placeholder="选择区域" allowClear showSearch filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())} />
             </Form.Item>
           <Form.Item label="时间范围">
             <RangePicker showTime value={range as any} onChange={(v) => setRange(v as any)} allowClear />

@@ -12,7 +12,11 @@ export declare class AuthController {
     callback(code: string, state: string): Promise<{
         access_token: string;
         refresh_token: string;
-        user: import("../entities/user.entity").UserEntity;
+        user: {
+            id: any;
+            username: any;
+            role: any;
+        };
     }>;
     login(body: {
         username: string;

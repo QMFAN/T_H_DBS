@@ -23,6 +23,18 @@ export class SettingsService {
   async upsertDefaults(payload: Partial<AreaDefaultsEntity>): Promise<AreaDefaultsEntity> {
     const ex = await this.repo.findOne({ where: { area_code: payload.area_code! } })
     if (ex) { Object.assign(ex, payload); return this.repo.save(ex) }
-    return this.repo.save(this.repo.create(payload))
+    const base = {
+      temp_min: 20,
+      temp_max: 26,
+      humidity_min: 40,
+      humidity_max: 70,
+      temp_duration_min: 30,
+      humidity_duration_min: 30,
+      gap_tolerance_minutes: 30,
+      tolerance_normal_budget: 0,
+    }
+    const toSave: Partial<AreaDefaultsEntity> = { ...base, ...payload }
+    const entity = this.repo.create(toSave as AreaDefaultsEntity)
+    return this.repo.save(entity)
   }
 }

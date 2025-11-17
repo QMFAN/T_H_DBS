@@ -19,6 +19,12 @@ export default defineConfig({
     host: true,
     cors: true,
   },
+  preview: {
+    port: 3006,
+    host: true,
+    strictPort: true,
+    allowedHosts: ['evian.zkenhealth.com', '192.168.1.231', 'localhost'],
+  },
   test: {
     environment: 'jsdom',
     globals: true,

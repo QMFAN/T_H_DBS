@@ -21,7 +21,23 @@ const MultiAreaTimelineECharts: FC<Props> = ({ areas, refreshKey }) => {
   const ref = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<any>(null);
 
-  useEffect(() => { if (areas.length) setSelectedIds(areas.map((a) => a.areaId)); }, [areas]);
+  useEffect(() => {
+    if (areas.length) {
+      const parse = (name: string) => {
+        const m = name.match(/(\d+)([A-Za-z]*)/);
+        const num = m ? parseInt(m[1], 10) : Number.MAX_SAFE_INTEGER;
+        const suffix = m ? m[2] : '';
+        return { num, suffix };
+      };
+      const sorted = [...areas].sort((a, b) => {
+        const pa = parse(a.areaName);
+        const pb = parse(b.areaName);
+        if (pa.num !== pb.num) return pa.num - pb.num;
+        return pa.suffix.localeCompare(pb.suffix);
+      });
+      setSelectedIds(sorted.map((a) => a.areaId));
+    }
+  }, [areas]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -91,7 +107,10 @@ const MultiAreaTimelineECharts: FC<Props> = ({ areas, refreshKey }) => {
   const rowH = 28;
   const height = Math.max(280, (selectedIds.length || areas.length || 1) * rowH + 80);
   return (
-    <Card title="多区域时间线（ECharts）" extra={<Space><Select style={{ minWidth: 320 }} mode="multiple" value={selectedIds} onChange={setSelectedIds} options={areas.map(a => ({ label: a.areaName.replace('检隔室','检疫室'), value: a.areaId }))} placeholder="选择区域" /><RangePicker showTime value={zoom} onChange={(v) => setZoom(v as any)} /></Space>}>
+    <Card title="多区域时间线（ECharts）" extra={<Space><Select style={{ minWidth: 320 }} mode="multiple" value={selectedIds} onChange={setSelectedIds} 
+      options={areas.map(a => ({ label: a.areaName.replace('检隔室','检疫室'), value: a.areaId }))}
+      placeholder="选择区域" showSearch filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())} />
+      <RangePicker showTime value={zoom} onChange={(v) => setZoom(v as any)} /></Space>}>
       <div ref={ref} style={{ width: '100%', height }} />
     </Card>
   );

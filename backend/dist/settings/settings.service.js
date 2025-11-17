@@ -38,7 +38,19 @@ let SettingsService = class SettingsService {
             Object.assign(ex, payload);
             return this.repo.save(ex);
         }
-        return this.repo.save(this.repo.create(payload));
+        const base = {
+            temp_min: 20,
+            temp_max: 26,
+            humidity_min: 40,
+            humidity_max: 70,
+            temp_duration_min: 30,
+            humidity_duration_min: 30,
+            gap_tolerance_minutes: 30,
+            tolerance_normal_budget: 0,
+        };
+        const toSave = { ...base, ...payload };
+        const entity = this.repo.create(toSave);
+        return this.repo.save(entity);
     }
 };
 exports.SettingsService = SettingsService;

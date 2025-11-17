@@ -1,49 +1,43 @@
-# Python cache and virtual environments
 __pycache__/
 *.py[cod]
 *.pyo
 .venv/
 venv/
 
-# Node.js dependencies
 node_modules/
 npm-debug.log*
 pnpm-lock.yaml
 yarn.lock
 
-# IDE and editor settings
 .vscode/
 .idea/
 *.swp
 *.swo
 
-# Operating system files
 Thumbs.db
 .DS_Store
 
-# Logs and temp files
 logs/
 *.log
 *.tmp
 
-# Backend imports storage
 backend/storage/
+backend/dist/
+backend/coverage/
+backend/logs/
+backend/tsconfig.build.tsbuildinfo
+backend/*.tsbuildinfo
 
-# Environment variables
+frontend/dist/
+frontend/coverage/
+frontend/.vite/
+
 .env
 .env.*
 
-# Docker volumes / database data
-infra/mysql/dev/data/
-infra/mysql/prod/data/
-infra/mysql/dev/init/
-infra/mysql/prod/init/
-infra/mysql/dev/conf.d/my.cnf
-infra/mysql/prod/conf.d/my.cnf
-infra/mysql/dev/conf.d/*.cnf
-infra/mysql/prod/conf.d/*.cnf
+infra/mysql/mysql_data/
 
-# Exports/uploads
 exports/
 uploads/
-旧代码库/
+.trae/
+WW_verify_*.txt

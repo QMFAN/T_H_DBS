@@ -1,4 +1,4 @@
-import { Layout, Menu, Typography, Breadcrumb, Space, Tag, Button, message } from 'antd';
+import { Layout, Menu, Typography, Space, Button, message } from 'antd';
 import type { FC } from 'react';
 import type { MenuProps } from 'antd';
 import { CloudUploadOutlined, DashboardOutlined, SettingOutlined, LineChartOutlined } from '@ant-design/icons';
@@ -66,24 +66,7 @@ const BasicLayout: FC = () => {
     return MENU_ITEMS.filter((i: any) => allowed.includes(i.key as string))
   }, [user])
 
-  const breadcrumbItems = useMemo(() => {
-    if (location.pathname.startsWith('/import')) {
-      return [{ title: '数据管理' }, { title: 'Excel 导入' }];
-    }
-    if (location.pathname.startsWith('/status')) {
-      return [{ title: '数据管理' }, { title: '数据库状态' }];
-    }
-    if (location.pathname.startsWith('/analysis')) {
-      return [{ title: '数据管理' }, { title: '智能分析' }];
-    }
-    if (location.pathname.startsWith('/settings')) {
-      return [{ title: '系统管理' }, { title: '系统设置' }];
-    }
-    if (location.pathname.startsWith('/users')) {
-      return [{ title: '系统管理' }, { title: '用户管理' }];
-    }
-    return [{ title: '未定义' }];
-  }, [location.pathname]);
+  
 
   const handleMenuClick: MenuProps['onClick'] = ({ key }) => {
     if (key === 'import') navigate('/import');

@@ -33,7 +33,9 @@ const SettingsPage: FC = () => {
         gap_tolerance_minutes: defaults?.gap_tolerance_minutes ?? null,
         tolerance_normal_budget: defaults?.tolerance_normal_budget ?? null,
       }))
-      setRows(list)
+      const parse = (name: string) => { const m = name.match(/(\d+)([A-Za-z]*)/); return { num: m ? parseInt(m[1], 10) : Number.MAX_SAFE_INTEGER, suffix: m ? m[2] : '' } }
+      const sorted = [...list].sort((a, b) => { const pa = parse(a.area_name); const pb = parse(b.area_name); if (pa.num !== pb.num) return pa.num - pb.num; return pa.suffix.localeCompare(pb.suffix) })
+      setRows(sorted)
     } catch (e: any) { msg.error(e?.message ?? '加载失败') }
     finally { setLoading(false) }
   }
@@ -88,7 +90,7 @@ const SettingsPage: FC = () => {
           rowSelection={{ selectedRowKeys, onChange: setSelectedRowKeys }}
           loading={loading}
           dataSource={rows}
-          pagination={{ pageSize: 10 }}
+          pagination={false}
           columns={[
             { title: '区域', dataIndex: 'area_name' },
             { title: '代码', dataIndex: 'area_code' },
