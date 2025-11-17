@@ -41,3 +41,7 @@ exports/
 uploads/
 .trae/
 WW_verify_*.txt
+infra/mysql/dev/
+infra/mysql/manual/
+infra/mysql/prod/
+旧代码库/
