@@ -86,11 +86,12 @@ const MultiAreaTimelineECharts: FC<Props> = ({ areas, refreshKey }) => {
         xAxis: { type: 'time' },
         yAxis: { type: 'category', data: yCats },
         dataZoom: [
-          { type: 'slider', xAxisIndex: 0 },
-          { type: 'inside', xAxisIndex: 0 },
+          { type: 'slider', xAxisIndex: 0, filterMode: 'none' },
+          { type: 'inside', xAxisIndex: 0, filterMode: 'none' },
         ],
         series: [{
           type: 'custom',
+          clip: true,
           renderItem: (params: any, api: any) => {
             void params; const yIdx = api.value(2); const start = api.coord([api.value(0), yIdx]); const end = api.coord([api.value(1), yIdx]);
             const height = 18; return { type: 'rect', shape: { x: start[0], y: start[1] - height / 2, width: Math.max(1, end[0] - start[0]), height }, style: { fill: '#91d5ff', stroke: '#69c0ff' } };

@@ -29,7 +29,17 @@ const UsersPage: FC = () => {
             <Space>
               <Button size="small" onClick={()=>{ setOpenEdit({ open: true, record }); editForm.setFieldsValue({ role: record.role, status: (record.status===1||record.status==='1'||record.status==='enabled')?'enabled':'disabled' }) }}>编辑</Button>
               <Button size="small" onClick={()=>{ setOpenReset({ open: true, record }); resetForm.resetFields() }}>重置密码</Button>
-              <Button size="small" danger onClick={async ()=>{ await http.delete(`/users/${record.id}`); msg.success('已删除'); load() }}>删除</Button>
+              <Button size="small" danger onClick={()=>{
+                Modal.confirm({
+                  title: '确认删除该用户？',
+                  content: '删除后不可恢复，请谨慎操作。',
+                  okText: '确认删除',
+                  okType: 'danger',
+                  cancelText: '取消',
+                  centered: true,
+                  onOk: async () => { await http.delete(`/users/${record.id}`); msg.success('已删除'); load() },
+                })
+              }}>删除</Button>
             </Space>
           ) },
         ]} />

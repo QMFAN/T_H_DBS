@@ -196,6 +196,7 @@ export class ExcelImportService implements OnModuleInit {
   }
 
   async getDashboardSummary(): Promise<ImportDashboardSummaryDto> {
+    await this.autoResolveExpiredAnomalies()
     const pendingFiles = await this.importTaskRepository.count({ where: { status: 'pending' } });
 
     const importedTotalRaw = await this.importTaskRepository
@@ -292,6 +293,7 @@ export class ExcelImportService implements OnModuleInit {
   }
 
   async getAnomalyOverview(): Promise<ImportAnomalyOverviewDto> {
+    await this.autoResolveExpiredAnomalies()
     return this.anomalyStore.getOverview();
   }
 
@@ -424,6 +426,30 @@ export class ExcelImportService implements OnModuleInit {
       task.status = pendingForTask === 0 ? 'completed' : 'processing';
       task.progressLastAt = new Date();
       await this.importTaskRepository.save(task);
+    }
+  }
+
+  private async autoResolveExpiredAnomalies(): Promise<void> {
+    const resolved = await this.anomalyStore.autoResolveExpired()
+    if (!resolved.length) return
+    const byTask = new Map<number, { count: number }>()
+    for (const item of resolved) {
+      let entry = byTask.get(item.taskNumericId)
+      if (!entry) {
+        entry = { count: 0 }
+        byTask.set(item.taskNumericId, entry)
+      }
+      entry.count += 1
+    }
+    for (const [taskId, group] of byTask.entries()) {
+      const task = await this.importTaskRepository.findOne({ where: { id: taskId } })
+      if (!task) continue
+      task.anomaliesProcessed = (task.anomaliesProcessed ?? 0) + group.count
+      task.skipCount = (task.skipCount ?? 0) + group.count
+      const pendingForTask = await this.anomalyStore.pendingCountForTask(taskId)
+      task.status = pendingForTask === 0 ? 'completed' : 'processing'
+      task.progressLastAt = new Date()
+      await this.importTaskRepository.save(task)
     }
   }
 

@@ -33,6 +33,7 @@ export interface AnomalyStore {
   pendingCountForTask(taskNumericId: number): Promise<number>
   deleteBatch(batchId: string): void
   totalPending(): Promise<number>
+  autoResolveExpired(): Promise<Array<AnomalyStoreItemResult & { anomalyId: string }>>
 }
 
 export const ANOMALY_STORE: InjectionToken = 'ANOMALY_STORE'

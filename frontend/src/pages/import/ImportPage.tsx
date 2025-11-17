@@ -21,6 +21,7 @@ const ImportPage: FC = () => {
   const [messageApi, messageContextHolder] = message.useMessage();
   const queryClient = useQueryClient();
   const [fileList, setFileList] = useState<UploadFile[]>([]);
+  const [dirUploadKey, setDirUploadKey] = useState<number>(0);
   const [processingKey, setProcessingKey] = useState<string | null>(null);
   const [batchProgress, setBatchProgress] = useState<{
     visible: boolean;
@@ -524,10 +525,14 @@ const ImportPage: FC = () => {
               </Upload.Dragger>
               <div style={{ marginTop: 8, textAlign: 'right' }}>
                 <Upload
+                  key={dirUploadKey}
                   directory
                   beforeUpload={() => false}
                   showUploadList={false}
-                  onChange={({ fileList: dirFiles }) => setFileList(onlyExcel(dirFiles))}
+                  onChange={({ fileList: dirFiles }) => {
+                    setFileList(onlyExcel(dirFiles))
+                    setDirUploadKey((k) => k + 1)
+                  }}
                 >
                   <Button icon={<UploadOutlined />}>选择文件夹</Button>
                 </Upload>

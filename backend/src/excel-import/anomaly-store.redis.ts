@@ -31,7 +31,11 @@ export class RedisAnomalyStoreService implements AnomalyStore {
     const pipeline = this.redis.pipeline()
     for (const r of records) {
       const payload: Stored = { anomalyId: r.anomalyId, taskNumericId, batchId, areaName: r.areaName, timestamp: r.timestamp.toISOString(), type: r.type, variants: r.variants, createdAt: now }
-      pipeline.set(this.keyAnomaly(r.anomalyId), JSON.stringify(payload), 'PX', this.ttlMs)
+      if (r.type === 'duplicate') {
+        pipeline.set(this.keyAnomaly(r.anomalyId), JSON.stringify(payload), 'PX', this.ttlMs)
+      } else {
+        pipeline.set(this.keyAnomaly(r.anomalyId), JSON.stringify(payload))
+      }
       pipeline.sadd(this.keyBatchSet(batchId), r.anomalyId)
       pipeline.pexpire(this.keyBatchSet(batchId), this.ttlMs)
       pipeline.sadd(this.keyTaskSet(taskNumericId), r.anomalyId)
@@ -154,6 +158,34 @@ export class RedisAnomalyStoreService implements AnomalyStore {
       count += 1
     }
     return count
+  }
+
+  async autoResolveExpired(): Promise<Array<AnomalyStoreItemResult & { anomalyId: string }>> {
+    const keys = await this.redis.keys(this.keyAnomaly('*'))
+    if (!keys.length) return []
+    const raws = await this.redis.mget(...keys)
+    const now = Date.now()
+    const toDelete: Array<{ batchId: string; anomalyId: string; taskNumericId: number }> = []
+    const results: Array<AnomalyStoreItemResult & { anomalyId: string }> = []
+    for (const raw of raws) {
+      if (!raw) continue
+      const a = JSON.parse(raw) as Stored
+      if (a.type !== 'duplicate') continue
+      if (now - a.createdAt < this.ttlMs) continue
+      const v = a.variants.find((x) => (x.existingCount ?? 0) > 0) ?? a.variants[0] ?? null
+      toDelete.push({ batchId: a.batchId, anomalyId: a.anomalyId, taskNumericId: a.taskNumericId })
+      results.push({ anomalyId: a.anomalyId, batchId: a.batchId, taskNumericId: a.taskNumericId, areaName: a.areaName, timestamp: new Date(a.timestamp), resolvedVariant: v })
+    }
+    if (toDelete.length) {
+      const pipe = this.redis.pipeline()
+      for (const d of toDelete) {
+        pipe.del(this.keyAnomaly(d.anomalyId))
+        pipe.srem(this.keyBatchSet(d.batchId), d.anomalyId)
+        pipe.srem(this.keyTaskSet(d.taskNumericId), d.anomalyId)
+      }
+      await pipe.exec()
+    }
+    return results
   }
 
   private buildDuplicateSummary(items: Stored[]): DuplicateSummaryDto {

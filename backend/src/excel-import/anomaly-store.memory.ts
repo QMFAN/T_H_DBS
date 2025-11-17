@@ -18,10 +18,12 @@ interface StoredAnomaly {
 export class MemoryAnomalyStoreService implements AnomalyStore {
   private readonly anomalies = new Map<string, StoredAnomaly>()
   private readonly batchIndex = new Map<string, Set<string>>()
-  private readonly ttlMs: number
+  private readonly duplicateTtlMs: number
+  private readonly conflictTtlMs: number
 
-  constructor(ttlMs?: number) {
-    this.ttlMs = typeof ttlMs === 'number' && ttlMs > 0 ? ttlMs : 24 * 60 * 60 * 1000
+  constructor(duplicateTtlMs?: number, conflictTtlMs?: number) {
+    this.duplicateTtlMs = typeof duplicateTtlMs === 'number' && duplicateTtlMs > 0 ? duplicateTtlMs : 24 * 60 * 60 * 1000
+    this.conflictTtlMs = typeof conflictTtlMs === 'number' && conflictTtlMs > 0 ? conflictTtlMs : Number.POSITIVE_INFINITY
   }
 
   register(batchId: string, taskNumericId: number, records: Array<{
@@ -59,7 +61,8 @@ export class MemoryAnomalyStoreService implements AnomalyStore {
     const duplicates: StoredAnomaly[] = []
     const conflicts: StoredAnomaly[] = []
     for (const anomaly of this.anomalies.values()) {
-      if (now - anomaly.createdAt >= this.ttlMs) continue
+      const ttl = anomaly.type === 'duplicate' ? this.duplicateTtlMs : this.conflictTtlMs
+      if (now - anomaly.createdAt >= ttl) continue
       if (anomaly.type === 'duplicate') duplicates.push(anomaly)
       else conflicts.push(anomaly)
     }
@@ -124,7 +127,8 @@ export class MemoryAnomalyStoreService implements AnomalyStore {
   async findById(anomalyId: string): Promise<StoredAnomaly | null> {
     const a = this.anomalies.get(anomalyId)
     if (!a) return null
-    if (Date.now() - a.createdAt >= this.ttlMs) return null
+    const ttl = a.type === 'duplicate' ? this.duplicateTtlMs : this.conflictTtlMs
+    if (Date.now() - a.createdAt >= ttl) return null
     return a
   }
 
@@ -156,9 +160,11 @@ export class MemoryAnomalyStoreService implements AnomalyStore {
 
   async pendingCountForTask(taskNumericId: number): Promise<number> {
     let count = 0
+    const now = Date.now()
     for (const a of this.anomalies.values()) {
       if (a.taskNumericId !== taskNumericId) continue
-      if (Date.now() - a.createdAt >= this.ttlMs) continue
+      const ttl = a.type === 'duplicate' ? this.duplicateTtlMs : this.conflictTtlMs
+      if (now - a.createdAt >= ttl) continue
       count += 1
     }
     return count
@@ -188,9 +194,25 @@ export class MemoryAnomalyStoreService implements AnomalyStore {
     let count = 0
     const now = Date.now()
     for (const a of this.anomalies.values()) {
-      if (now - a.createdAt >= this.ttlMs) continue
+      const ttl = a.type === 'duplicate' ? this.duplicateTtlMs : this.conflictTtlMs
+      if (now - a.createdAt >= ttl) continue
       count += 1
     }
     return count
+  }
+
+  async autoResolveExpired(): Promise<Array<AnomalyStoreItemResult & { anomalyId: string }>> {
+    const out: Array<AnomalyStoreItemResult & { anomalyId: string }> = []
+    const now = Date.now()
+    for (const [id, a] of this.anomalies.entries()) {
+      const ttl = a.type === 'duplicate' ? this.duplicateTtlMs : this.conflictTtlMs
+      if (a.type !== 'duplicate') continue
+      if (now - a.createdAt < ttl) continue
+      let v: AnomalyVariantRecord | null = null
+      v = a.variants.find((x) => (x.existingCount ?? 0) > 0) ?? a.variants[0] ?? null
+      this.delete(id)
+      out.push({ anomalyId: id, batchId: a.batchId, taskNumericId: a.taskNumericId, areaName: a.areaName, timestamp: a.timestamp, resolvedVariant: v })
+    }
+    return out
   }
 }
