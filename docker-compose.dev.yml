@@ -1,0 +1,27 @@
+services:
+  mysql:
+    image: mysql:9.3
+    container_name: thdbs-mysql-dev
+    restart: unless-stopped
+    ports:
+      - "3308:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: supersecure
+      MYSQL_DATABASE: th_system
+      MYSQL_USER: th_user
+      MYSQL_PASSWORD: th_password
+      TZ: Asia/Shanghai
+    command:
+      - "--default-time-zone=+08:00"
+      - "--character-set-server=utf8mb4"
+      - "--collation-server=utf8mb4_unicode_ci"
+    volumes:
+      - ./infra/mysql/dev/data:/var/lib/mysql
+      - ./infra/mysql/dev/conf.d:/etc/mysql/conf.d
+      - ./infra/mysql/dev/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-pth_password"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s

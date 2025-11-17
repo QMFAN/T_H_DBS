@@ -1,0 +1,56 @@
+CREATE TABLE IF NOT EXISTS areas (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  code VARCHAR(64) NOT NULL UNIQUE,
+  name VARCHAR(128) NOT NULL,
+  location VARCHAR(255) NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS sensor_data (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  area_id BIGINT UNSIGNED NOT NULL,
+  timestamp DATETIME NOT NULL,
+  temperature DECIMAL(5,2) NULL,
+  humidity DECIMAL(5,2) NULL,
+  file_source VARCHAR(255) NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_sensor_data_area_timestamp (area_id, timestamp),
+  KEY idx_sensor_data_timestamp (timestamp),
+  CONSTRAINT fk_sensor_area FOREIGN KEY (area_id) REFERENCES areas(id) ON UPDATE CASCADE ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS users (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  username VARCHAR(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  wecom_user_id VARCHAR(100) COLLATE utf8mb4_unicode_ci NULL,
+  password_hash VARCHAR(255) COLLATE utf8mb4_unicode_ci NULL,
+  role VARCHAR(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'user',
+  status INT NOT NULL DEFAULT 1,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uniq_username (username),
+  UNIQUE KEY uniq_wecom (wecom_user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS area_defaults (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  area_code VARCHAR(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  temp_min FLOAT NOT NULL,
+  temp_max FLOAT NOT NULL,
+  humidity_min FLOAT NOT NULL,
+  humidity_max FLOAT NOT NULL,
+  temp_duration_min INT NOT NULL,
+  humidity_duration_min INT NOT NULL,
+  gap_tolerance_minutes INT NOT NULL DEFAULT 30,
+  tolerance_normal_budget INT NOT NULL DEFAULT 0,
+  updated_by VARCHAR(100) COLLATE utf8mb4_unicode_ci NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uniq_area_code (area_code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
