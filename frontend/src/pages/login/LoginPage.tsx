@@ -9,7 +9,7 @@ const LoginPage: FC = () => {
   const [loading, setLoading] = useState(false)
   const nav = useNavigate()
   const [messageApi, contextHolder] = message.useMessage()
-  const [urls, setUrls] = useState<{ qr_url?: string; oauth_url?: string; state?: string } | null>(null)
+  const [urls, setUrls] = useState<{ qr_url?: string; oauth_url?: string } | null>(null)
   const go = async (type: 'qr' | 'oauth') => {
     setLoading(true)
     try {
@@ -26,27 +26,7 @@ const LoginPage: FC = () => {
     }
   }
   useEffect(() => {
-    let timer: any
-    authService.getLoginUrls().then((res) => {
-      setUrls(res)
-      const st = res.state
-      if (st) {
-        timer = setInterval(async () => {
-          try {
-            const r = await authService.poll(st)
-            if (r && (r as any).ready) {
-              const ok = r as any
-              localStorage.setItem('auth_token', ok.access_token)
-              localStorage.setItem('refresh_token', ok.refresh_token)
-              messageApi.success('扫码登录成功')
-              nav('/analysis', { replace: true })
-              clearInterval(timer)
-            }
-          } catch {}
-        }, 1500)
-      }
-    }).catch((e) => messageApi.error(e?.message ?? '获取登录地址失败'))
-    return () => { if (timer) clearInterval(timer) }
+    authService.getLoginUrls().then((res) => setUrls(res)).catch((e) => messageApi.error(e?.message ?? '获取登录地址失败'))
   }, [])
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #f5f7ff 0%, #e6f0ff 100%)', padding: 24 }}>
@@ -67,7 +47,7 @@ const LoginPage: FC = () => {
                     <Typography.Text type="secondary">正在获取二维码...</Typography.Text>
                   )}
                   <div style={{ marginTop: 10 }}><Typography.Text>使用企业微信扫码登录</Typography.Text></div>
-                  <Button type="primary" size="large" onClick={() => void go('qr')} loading={loading} style={{ marginTop: 12 }}>打开企业微信登录页</Button>
+                  <Button type="primary" size="large" onClick={() => void go('oauth')} loading={loading} style={{ marginTop: 12 }}>授权登录</Button>
                 </div>
               </div>
             ),
