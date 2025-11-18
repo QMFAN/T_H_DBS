@@ -8,15 +8,18 @@ import * as crypto from 'crypto'
 export class AuthService {
   constructor(private readonly users: UsersService, private readonly jwt: JwtService, private readonly config: ConfigService) {}
 
+  private stateStore: Map<string, { access_token: string; refresh_token: string; user: { id: number; username: string; role: string }; expires_at: number }> = new Map()
+  private stateTTL = 5 * 60 * 1000
+
   buildWeComLoginUrls(redirect: string, corpId: string, agentId: string) {
     const state = Math.random().toString(36).slice(2)
     const qr_url = `https://open.work.weixin.qq.com/wwopen/sso/qrConnect?appid=${corpId}&agentid=${agentId}&redirect_uri=${encodeURIComponent(redirect)}&state=${state}`
-    const oauth_url = `https://open.weixin.qq.com/connect/oauth2/authorize?appid=${corpId}&redirect_uri=${encodeURIComponent(redirect)}&response_type=code&scope=snsapi_userinfo&state=${state}#wechat_redirect`
+    const oauth_url = `https://open.work.weixin.qq.com/wwopen/sso/qrConnect?appid=${corpId}&agentid=${agentId}&redirect_uri=${encodeURIComponent(redirect)}&state=${state}`
     return { qr_url, oauth_url, state }
   }
 
   async handleCallback(code: string, state: string) {
-    void state
+    const now = Date.now()
     const corpId = this.config.get<string>('WE_COM_CORP_ID') || ''
     const secret = this.config.get<string>('WE_COM_SECRET') || ''
     let wecom_user_id = ''
@@ -56,7 +59,11 @@ export class AuthService {
       }
     }
     const tokens = this.issueTokens(user as any)
-    return { access_token: tokens.accessToken, refresh_token: tokens.refreshToken, user: { id: (user as any).id, username: (user as any).username, role: (user as any).role } }
+    const payload = { access_token: tokens.accessToken, refresh_token: tokens.refreshToken, user: { id: (user as any).id, username: (user as any).username, role: (user as any).role } }
+    if (state) {
+      this.stateStore.set(state, { ...payload, expires_at: now + this.stateTTL })
+    }
+    return payload
   }
 
   private hashPassword(password: string) {
@@ -112,5 +119,14 @@ export class AuthService {
       const newRefreshToken = this.jwt.sign({ sub: payload.sub, type: 'refresh' }, { expiresIn: '7d' })
       return { success: true, access_token: accessToken, refresh_token: newRefreshToken }
     } catch { return { success: false } }
+  }
+
+  getStateTicket(state: string) {
+    const now = Date.now()
+    const item = this.stateStore.get(state)
+    if (!item) return null
+    if (item.expires_at < now) { this.stateStore.delete(state); return null }
+    this.stateStore.delete(state)
+    return item
   }
 }

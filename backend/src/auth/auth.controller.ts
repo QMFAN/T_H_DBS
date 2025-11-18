@@ -20,6 +20,13 @@ export class AuthController {
     return this.auth.handleCallback(code, state)
   }
 
+  @Get('wecom/ticket')
+  ticket(@Query('state') state: string) {
+    const ok = this.auth.getStateTicket(state)
+    if (!ok) return { ready: false }
+    return { ready: true, ...ok }
+  }
+
   @Post('login')
   async login(@Body() body: { username: string; password: string }) {
     return this.auth.passwordLogin(body.username, body.password)

@@ -9,6 +9,10 @@ export const authService = {
     const res = await http.get('/auth/wecom/callback', { params })
     return res.data as { access_token: string; refresh_token: string; user: { id: number; username: string; role: string } }
   },
+  async poll(state: string) {
+    const res = await http.get('/auth/wecom/ticket', { params: { state } })
+    return res.data as ({ ready: false } | { ready: true; access_token: string; refresh_token: string; user: { id: number; username: string; role: string } })
+  },
   async passwordLogin(username: string, password: string) {
     const res = await http.post('/auth/login', { username, password })
     return res.data as { success: boolean; access_token?: string; refresh_token?: string; user?: { id: number; username: string; role: string } }
