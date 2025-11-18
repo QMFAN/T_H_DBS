@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import { analyticsService } from '../../services/analyticsService';
+import type { OverviewStats, AreasResponse, SegmentItem } from '../../services/analyticsService';
 import MultiAreaTimelineECharts from '../../components/status/MultiAreaTimelineECharts';
 import ExportTool from '../../components/status/ExportTool';
 import DeleteTool from '../../components/status/DeleteTool';
@@ -18,14 +19,16 @@ const DatabaseStatusPage: FC = () => {
   const queryClient = useQueryClient();
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const { data: overview } = useQuery({ queryKey: ['analytics:overview'], queryFn: analyticsService.getOverview });
+  const { data: overview } = useQuery<OverviewStats>({ queryKey: ['analytics:overview'], queryFn: analyticsService.getOverview, staleTime: 120000, gcTime: 600000 });
 
 
   const [areasPage, setAreasPage] = useState(1)
   const [areasPageSize, setAreasPageSize] = useState(10)
-  const { data: areasAll, isLoading: isLoadingAll } = useQuery({
+  const { data: areasAll, isLoading: isLoadingAll } = useQuery<AreasResponse>({
     queryKey: ['analytics:areas:all', areasPage, areasPageSize, range[0]?.valueOf(), range[1]?.valueOf()],
     queryFn: () => analyticsService.getAreas({ page: areasPage, pageSize: areasPageSize, start: range[0]?.valueOf(), end: range[1]?.valueOf(), sort: 'name', order: 'asc' }),
+    staleTime: 120000,
+    gcTime: 600000,
   });
 
   const areasAllSorted = useMemo(() => {
@@ -44,13 +47,15 @@ const DatabaseStatusPage: FC = () => {
     })
   }, [areasAll])
 
-  const { data: segmentsData, refetch: refetchSegments } = useQuery({
+  const { data: segmentsData, refetch: refetchSegments } = useQuery<{ segments: SegmentItem[]; segmentsCount: number }>({
     queryKey: ['analytics:segments', selectedArea?.areaId, range[0]?.valueOf(), range[1]?.valueOf()],
     queryFn: () =>
       selectedArea
         ? analyticsService.getAreaSegments({ areaId: selectedArea.areaId, start: range[0]?.valueOf(), end: range[1]?.valueOf(), granularity: 'record', limit: 200, gapToleranceMinutes: 20 })
         : Promise.resolve({ segments: [], segmentsCount: 0 }),
     enabled: !!selectedArea,
+    staleTime: 60000,
+    gcTime: 300000,
   });
 
   
@@ -94,7 +99,11 @@ const DatabaseStatusPage: FC = () => {
         </Descriptions>
       </Card>
 
-      <Card title="分区域统计" extra={<RangePicker value={range} onChange={(v) => { setRange(v as any); setAreasPage(1); }} showTime />}> 
+      <Card title="分区域统计" extra={<RangePicker value={range} onChange={(v) => {
+        const next = v as any
+        // 简易防抖：避免频繁拖动产生多次拉取
+        setTimeout(() => { setRange(next); setAreasPage(1); }, 300)
+      }} showTime />}> 
         <Table
           rowKey={(r) => String(r.areaId)}
           loading={isLoadingAll}
@@ -108,6 +117,7 @@ const DatabaseStatusPage: FC = () => {
             showSizeChanger: true,
           }}
         />
+        {/* 预取下一页 */}
       </Card>
 
       {/* 多区域时间线（ECharts） */}

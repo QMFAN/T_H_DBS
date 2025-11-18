@@ -10,12 +10,14 @@ import { RedisAnomalyStoreService } from './anomaly-store.redis';
 import { ANOMALY_STORE } from './anomaly-store.interface';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ExcelImportService } from './excel-import.service';
+import { AnalyticsModule } from '../analytics/analytics.module';
 import { ExcelImportController } from './excel-import.controller';
 
 @Module({
   imports: [
     ConfigModule,
     TypeOrmModule.forFeature([Area, SensorData, ImportTask]),
+    AnalyticsModule,
     MulterModule.register({
       dest: os.tmpdir(),
     }),

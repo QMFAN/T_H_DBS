@@ -1,4 +1,4 @@
-import { Controller, Get, Query, Put, Body } from '@nestjs/common'
+import { Controller, Get, Query, Put, Body, Delete, Param, BadRequestException } from '@nestjs/common'
 import { SettingsService } from './settings.service'
 
 @Controller('settings')
@@ -13,4 +13,11 @@ export class SettingsController {
 
   @Put('defaults')
   async upsert(@Body() body: any) { return { success: true, defaults: await this.svc.upsertDefaults(body) } }
+
+  @Delete('areas/:code')
+  async deleteArea(@Param('code') code: string) {
+    if (!code) throw new BadRequestException('area code is required')
+    await this.svc.deleteArea(code)
+    return { success: true }
+  }
 }

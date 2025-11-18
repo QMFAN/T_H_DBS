@@ -1,4 +1,4 @@
-import { Card, Form, InputNumber, Button, Space, message, Table, Drawer } from 'antd'
+import { Card, Form, InputNumber, Button, Space, message, Table, Drawer, Modal } from 'antd'
 import type { FC } from 'react'
 import { useEffect, useState } from 'react'
 import http from '../../services/http'
@@ -102,7 +102,31 @@ const SettingsPage: FC = () => {
             { title: '湿度持续(min)', dataIndex: 'humidity_duration_min' },
             { title: '拼接容忍(分)', dataIndex: 'gap_tolerance_minutes' },
             { title: '容错正常点', dataIndex: 'tolerance_normal_budget' },
-            { title: '操作', render: (_: any, r: any) => (<Button type="link" onClick={()=>openEdit([r.area_code], false)}>编辑</Button>) },
+            { title: '操作', render: (_: any, r: any) => (
+              <Space>
+                <Button type="link" onClick={()=>openEdit([r.area_code], false)}>编辑</Button>
+                <Button type="link" danger onClick={() => {
+                  Modal.confirm({
+                    title: '确认删除该区域？',
+                    content: '仅当数据库不存在该区域的记录时允许删除，将同时移除默认参数与区域信息。',
+                    okText: '确认删除',
+                    okType: 'danger',
+                    cancelText: '取消',
+                    centered: true,
+                    onOk: async () => {
+                      try {
+                        await http.delete(`/settings/areas/${r.area_code}`)
+                        msg.success('已删除')
+                        await loadAll()
+                      } catch (e: any) {
+                        const serverMsg = e?.response?.data?.message
+                        msg.error(serverMsg ? String(serverMsg) : (e?.message ?? '删除失败'))
+                      }
+                    },
+                  })
+                }}>删除</Button>
+              </Space>
+            ) },
           ]}
         />
         <Drawer title={drawerTitle} open={drawerOpen} onClose={()=>setDrawerOpen(false)} width={360} destroyOnClose>

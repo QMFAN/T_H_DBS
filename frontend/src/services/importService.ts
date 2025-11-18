@@ -31,6 +31,10 @@ const importService = {
     const params = options?.deleteFile ? { deleteFile: String(!!options.deleteFile) } : undefined
     await http.delete(`/imports/history/${taskId}`, { params })
   },
+  async bulkDeleteHistory(taskIds: string[], options?: { deleteFile?: boolean }): Promise<number> {
+    const { data } = await http.post<{ deleted: number }>(`/imports/history/bulk-delete`, { taskIds, deleteFile: !!options?.deleteFile })
+    return data?.deleted ?? 0
+  },
   async resolveConflict(conflictId: string, payload: ResolveConflictPayload): Promise<void> {
     await http.post(`/imports/conflicts/${conflictId}/resolve`, payload);
   },

@@ -3,6 +3,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Between, In, Repository, Brackets } from 'typeorm';
 import { Area } from '../entities/area.entity';
 import { SensorData } from '../entities/sensor-data.entity';
+import { AnalyticsCacheService } from './analytics-cache.service';
+import { ConfigService } from '@nestjs/config';
 
 export interface OverviewStats {
   areasTotal: number;
@@ -50,9 +52,15 @@ export class AnalyticsService {
   constructor(
     @InjectRepository(Area) private readonly areaRepo: Repository<Area>,
     @InjectRepository(SensorData) private readonly dataRepo: Repository<SensorData>,
+    private readonly cache: AnalyticsCacheService,
+    private readonly config: ConfigService,
   ) {}
 
   async getOverview(): Promise<OverviewStats> {
+    const ttl = parseInt(this.config.get<string>('ANALYTICS_OVERVIEW_TTL', '300'), 10) * 1000
+    const key = this.cache.keyOverview()
+    const hit = this.cache.get<OverviewStats>(key)
+    if (hit) return hit
     const areasTotal = await this.areaRepo.count();
     const recordsTotal = await this.dataRepo.count();
     const qb = this.dataRepo.createQueryBuilder('s');
@@ -64,11 +72,13 @@ export class AnalyticsService {
     const min = raw?.min ?? null;
     const max = raw?.max ?? null;
 
-    return {
+    const out: OverviewStats = {
       areasTotal,
       recordsTotal,
       timeRange: { min, max },
-    };
+    }
+    this.cache.set(key, out, ttl)
+    return out
   }
 
   async getAreas(query: AreasQuery): Promise<{ list: AreaItem[]; total: number; page: number; pageSize: number }> {
@@ -82,6 +92,11 @@ export class AnalyticsService {
       max: 'timeMax',
     };
     const sortExpr = sortMap[query.sort ?? 'count'] ?? 'count';
+
+    const ttl = parseInt(this.config.get<string>('ANALYTICS_AREAS_TTL', '300'), 10) * 1000
+    const key = this.cache.keyAreas({ page, pageSize, start: query.start, end: query.end, sort: query.sort, order: query.order })
+    const hit = this.cache.get<{ list: AreaItem[]; total: number; page: number; pageSize: number }>(key)
+    if (hit) return hit
 
     const qb = this.areaRepo
       .createQueryBuilder('a')
@@ -139,7 +154,9 @@ export class AnalyticsService {
     );
 
     const withSegments = list.map((it, idx) => ({ ...it, segmentsCount: segmentsCounts[idx] ?? 0 }));
-    return { list: withSegments, total, page, pageSize };
+    const out = { list: withSegments, total, page, pageSize }
+    this.cache.set(key, out, ttl)
+    return out
   }
 
   async getAreaSegments(query: AreaSegmentsQuery): Promise<{ segments: SegmentItem[]; segmentsCount: number }> {
@@ -159,6 +176,10 @@ export class AnalyticsService {
     const limit = Math.min(200, Math.max(1, query.limit ?? 50));
 
     if (granularity === 'day') {
+      const ttlDay = parseInt(this.config.get<string>('ANALYTICS_SEGMENTS_DAY_TTL', '1800'), 10) * 1000
+      const keyDay = this.cache.keySegmentsDay(query.areaId, start, end)
+      const hitDay = this.cache.get<{ segments: SegmentItem[]; segmentsCount: number }>(keyDay)
+      if (hitDay) return hitDay
       const dates = await this.dataRepo.query(
         'SELECT DATE(timestamp) AS d FROM sensor_data WHERE area_id = ? GROUP BY d ORDER BY d ASC',
         [query.areaId],
@@ -186,11 +207,17 @@ export class AnalyticsService {
       if (segStart && prev) {
         segments.push({ start: segStart, end: new Date(prev), count });
       }
-      return { segments, segmentsCount: segments.length };
+      const out = { segments, segmentsCount: segments.length }
+      this.cache.set(keyDay, out, ttlDay)
+      return out
     }
 
     // record 粒度（精确到分钟，默认容忍 20 分钟）
     const gapMs = Math.max(1, (query.gapToleranceMinutes ?? 20)) * 60 * 1000;
+    const ttlRec = parseInt(this.config.get<string>('ANALYTICS_SEGMENTS_RECORD_TTL', '120'), 10) * 1000
+    const keyRec = this.cache.keySegmentsRecord(query.areaId, start, end, query.gapToleranceMinutes)
+    const hitRec = this.cache.get<{ segments: SegmentItem[]; segmentsCount: number }>(keyRec)
+    if (hitRec) return hitRec
     const rows = await this.dataRepo
       .createQueryBuilder('s')
       .select(['s.timestamp'])
@@ -220,7 +247,9 @@ export class AnalyticsService {
     if (segStart && prev) {
       segments.push({ start: segStart, end: new Date(prev), count });
     }
-    return { segments, segmentsCount: segments.length };
+    const out = { segments, segmentsCount: segments.length }
+    this.cache.set(keyRec, out, ttlRec)
+    return out
   }
 
   async streamExport(res: any, payload: { areaIds?: number[]; ranges?: { start: Date; end: Date }[]; granularity?: 'record' | 'day' }) {
@@ -440,6 +469,9 @@ export class AnalyticsService {
         }
       }
     }
+    this.cache.del('analytics:overview')
+    this.cache.del('analytics:areas')
+    this.cache.del('analytics:segments:')
     return { affected };
   }
 }

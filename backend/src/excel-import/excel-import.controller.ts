@@ -87,6 +87,16 @@ export class ExcelImportController {
     await this.excelImportService.deleteImportTask(taskId, shouldDeleteFile);
   }
 
+  @Post('history/bulk-delete')
+  async bulkDeleteHistory(@Body() body: { taskIds: string[]; deleteFile?: boolean }): Promise<{ deleted: number }> {
+    const ids = Array.isArray(body?.taskIds) ? body.taskIds.filter((x) => typeof x === 'string' && x.trim()) : []
+    if (!ids.length) {
+      throw new BadRequestException('taskIds is required')
+    }
+    const deleted = await this.excelImportService.bulkDeleteImportTasks(ids, !!body?.deleteFile)
+    return { deleted }
+  }
+
   @Get('conflicts')
   async getAnomalies(): Promise<ImportAnomalyOverviewDto> {
     return this.excelImportService.getAnomalyOverview();

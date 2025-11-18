@@ -7,6 +7,7 @@ import {
   Inject,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { AnalyticsCacheService } from '../analytics/analytics-cache.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as fs from 'node:fs';
 import { promises as fsPromises } from 'node:fs';
@@ -142,6 +143,7 @@ export class ExcelImportService implements OnModuleInit {
     private readonly importTaskRepository: Repository<ImportTask>,
     @Inject(ANOMALY_STORE)
     private readonly anomalyStore: AnomalyStore,
+    private readonly analyticsCache: AnalyticsCacheService,
   ) {}
 
   onModuleInit(): void {
@@ -186,6 +188,7 @@ export class ExcelImportService implements OnModuleInit {
       })
       .join('； ');
 
+    await this.invalidateAnalyticsCaches()
     return {
       taskId: batchId,
       imported: totals.imported,
@@ -193,6 +196,14 @@ export class ExcelImportService implements OnModuleInit {
       conflicts: totals.conflicts,
       message: message || undefined,
     };
+  }
+
+  private async invalidateAnalyticsCaches(): Promise<void> {
+    try {
+      this.analyticsCache.del('analytics:overview')
+      this.analyticsCache.del('analytics:areas')
+      this.analyticsCache.del('analytics:segments:')
+    } catch {}
   }
 
   async getDashboardSummary(): Promise<ImportDashboardSummaryDto> {
@@ -290,6 +301,19 @@ export class ExcelImportService implements OnModuleInit {
         this.logger.warn(`删除文件失败 ${task.storedPath}`, error as Error);
       }
     }
+    await this.invalidateAnalyticsCaches()
+  }
+
+  async bulkDeleteImportTasks(taskIds: string[], deleteFile: boolean): Promise<number> {
+    let count = 0
+    for (const id of taskIds) {
+      try {
+        await this.deleteImportTask(id, deleteFile)
+        count += 1
+      } catch (e) {
+      }
+    }
+    return count
   }
 
   async getAnomalyOverview(): Promise<ImportAnomalyOverviewDto> {
@@ -365,6 +389,7 @@ export class ExcelImportService implements OnModuleInit {
     } finally {
       await manager.query('SET FOREIGN_KEY_CHECKS=1');
     }
+    await this.invalidateAnalyticsCaches()
   }
 
   async bulkResolveAnomalies(dto: BulkResolveAnomaliesDto): Promise<void> {

@@ -66,8 +66,13 @@ const ImportPage: FC = () => {
 
   const refreshAfterDelete = useCallback(async () => {
     await queryClient.refetchQueries({ queryKey: ['import-history', page, pageSize] })
+    const hp = queryClient.getQueryData<{ items: ImportHistoryItem[]; total: number; page: number; pageSize: number }>(['import-history', page, pageSize])
+    if ((hp?.items?.length ?? 0) === 0 && page > 1) {
+      setPage((p) => p - 1)
+      await queryClient.refetchQueries({ queryKey: ['import-history', page - 1, pageSize] })
+    }
     await queryClient.refetchQueries({ queryKey: ['import-summary'] })
-  }, [queryClient])
+  }, [queryClient, page, pageSize])
 
   const handleDeleteHistory = useCallback((taskId: string) => {
     let deleteFile = true
@@ -410,6 +415,41 @@ const ImportPage: FC = () => {
     }));
   }, [historyPage]);
 
+  const [selectedHistoryIds, setSelectedHistoryIds] = useState<string[]>([])
+
+  const bulkDownload = useCallback(() => {
+    const urls = historyList.filter(h => selectedHistoryIds.includes(h.id)).map(h => h.fileUrl).filter((u): u is string => !!u)
+    if (!urls.length) {
+      messageApi.info('请选择至少一个带原文件的记录')
+      return
+    }
+    urls.forEach((u) => {
+      try { window.open(u, '_blank') } catch { /* noop */ }
+    })
+  }, [historyList, selectedHistoryIds, messageApi])
+
+  const bulkDelete = useCallback(() => {
+    if (!selectedHistoryIds.length) { messageApi.info('请选择要删除的记录'); return }
+    let deleteFile = true
+    modal.confirm({
+      title: '批量删除所选记录？',
+      content: (
+        <Space direction="vertical">
+          <Typography.Text>共 {selectedHistoryIds.length} 条导入记录</Typography.Text>
+          <Checkbox defaultChecked onChange={(e) => { deleteFile = e.target.checked }}>同时删除原始 Excel 文件</Checkbox>
+        </Space>
+      ),
+      okText: '确认删除',
+      cancelText: '取消',
+      onOk: async () => {
+        const deleted = await importService.bulkDeleteHistory(selectedHistoryIds, { deleteFile })
+        messageApi.success(`已删除 ${deleted} 条记录`)
+        setSelectedHistoryIds([])
+        await refreshAfterDelete()
+      },
+    })
+  }, [selectedHistoryIds, modal, importService, messageApi, refreshAfterDelete])
+
   const isUploading = uploadMutation.isPending;
   
   const isBulkProcessing = processingKey?.startsWith('bulk-') ?? false;
@@ -557,7 +597,19 @@ const ImportPage: FC = () => {
       <SectionCard
         title="导入历史"
         description="查看最近导入记录，可快速定位冲突并决定跳过或覆盖。"
-        extra={null}
+        extra={(
+          <Space>
+            <Button onClick={() => {
+              if (selectedHistoryIds.length === historyList.length) {
+                setSelectedHistoryIds([])
+              } else {
+                setSelectedHistoryIds(historyList.map(h => h.id))
+              }
+            }}>全选</Button>
+            <Button onClick={bulkDownload} disabled={selectedHistoryIds.length===0}>批量下载原文件</Button>
+            <Button danger onClick={bulkDelete} disabled={selectedHistoryIds.length===0}>批量删除记录</Button>
+          </Space>
+        )}
       >
         {historyLoading ? (
           <Flex justify="center" style={{ paddingBlock: 32 }}>
@@ -565,7 +617,7 @@ const ImportPage: FC = () => {
           </Flex>
         ) : historyList.length ? (
           <>
-            <HistoryList items={historyList} onDelete={handleDeleteHistory} />
+            <HistoryList items={historyList} onDelete={handleDeleteHistory} selectedIds={selectedHistoryIds} onSelectChange={setSelectedHistoryIds} />
             <Flex justify="end" style={{ marginTop: 16 }}>
               <Pagination
                 current={page}
@@ -717,9 +769,11 @@ const ImportPage: FC = () => {
 interface HistoryListProps {
   items: Array<ImportHistoryItem & { uploadedAtText: string }>;
   onDelete: (taskId: string) => void;
+  selectedIds?: string[];
+  onSelectChange?: (ids: string[]) => void;
 }
 
-const HistoryList: FC<HistoryListProps> = ({ items, onDelete }) => {
+const HistoryList: FC<HistoryListProps> = ({ items, onDelete, selectedIds = [], onSelectChange }) => {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
       {items.map((item) => (
@@ -735,6 +789,12 @@ const HistoryList: FC<HistoryListProps> = ({ items, onDelete }) => {
               <Button type="link" danger onClick={() => onDelete(item.id)}>
                 删除
               </Button>
+              <Checkbox checked={selectedIds.includes(item.id)} onChange={(e) => {
+                if (!onSelectChange) return
+                const next = new Set(selectedIds)
+                if (e.target.checked) next.add(item.id); else next.delete(item.id)
+                onSelectChange(Array.from(next))
+              }}>选择</Checkbox>
             </Space>
           }
         >
