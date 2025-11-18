@@ -3,7 +3,7 @@ import http from './http'
 export const authService = {
   async getLoginUrls() {
     const res = await http.get('/auth/wecom/login-url')
-    return res.data as { qr_url: string; oauth_url: string; state: string }
+    return res.data as { qr_url: string; oauth_url: string; state: string; appid: string; agentid: string; redirect_uri: string }
   },
   async callback(params: { code: string; state: string }) {
     const res = await http.get('/auth/wecom/callback', { params })

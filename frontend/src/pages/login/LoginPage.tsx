@@ -1,5 +1,4 @@
 import { Card, Space, Button, message, Form, Input, Typography, Tabs } from 'antd'
-import { QRCodeCanvas as QRCode } from 'qrcode.react'
 import { useNavigate } from 'react-router-dom'
 import type { FC } from 'react'
 import { useState, useEffect } from 'react'
@@ -9,7 +8,7 @@ const LoginPage: FC = () => {
   const [loading, setLoading] = useState(false)
   const nav = useNavigate()
   const [messageApi, contextHolder] = message.useMessage()
-  const [urls, setUrls] = useState<{ qr_url?: string; oauth_url?: string } | null>(null)
+  const [urls, setUrls] = useState<{ qr_url?: string; oauth_url?: string; state?: string; appid?: string; agentid?: string; redirect_uri?: string } | null>(null)
   const go = async (type: 'qr' | 'oauth') => {
     setLoading(true)
     try {
@@ -28,6 +27,32 @@ const LoginPage: FC = () => {
   useEffect(() => {
     authService.getLoginUrls().then((res) => setUrls(res)).catch((e) => messageApi.error(e?.message ?? '获取登录地址失败'))
   }, [])
+
+  useEffect(() => {
+    if (urls?.appid && urls?.agentid && urls?.redirect_uri) {
+      const id = 'wecom-qr'
+      const ensureScript = () => new Promise<void>((resolve) => {
+        if ((window as any).WwLogin) { resolve(); return }
+        const s = document.createElement('script')
+        s.src = 'https://open.work.weixin.qq.com/wwopen/js/js_sdk.js'
+        s.onload = () => resolve()
+        document.body.appendChild(s)
+      })
+      void ensureScript().then(() => {
+        const WwLogin = (window as any).WwLogin
+        if (typeof WwLogin === 'function') {
+          WwLogin({
+            id,
+            appid: urls.appid,
+            agentid: urls.agentid,
+            redirect_uri: urls.redirect_uri,
+            state: urls.state,
+            href: ''
+          })
+        }
+      })
+    }
+  }, [urls])
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #f5f7ff 0%, #e6f0ff 100%)', padding: 24 }}>
       <div style={{ width: 'fit-content', maxWidth: 680 }}>
@@ -41,11 +66,7 @@ const LoginPage: FC = () => {
             children: (
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 12 }}>
                 <div style={{ textAlign: 'center', background: '#fff', padding: 16, borderRadius: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.06)' }}>
-                  {urls?.qr_url ? (
-                    <QRCode value={urls.qr_url} size={200} level="M" />
-                  ) : (
-                    <Typography.Text type="secondary">正在获取二维码...</Typography.Text>
-                  )}
+                  <div id="wecom-qr" style={{ width: 220, height: 220, display: 'inline-block' }} />
                   <div style={{ marginTop: 10 }}><Typography.Text>使用企业微信扫码登录</Typography.Text></div>
                   <Button type="primary" size="large" onClick={() => void go('oauth')} loading={loading} style={{ marginTop: 12 }}>授权登录</Button>
                 </div>

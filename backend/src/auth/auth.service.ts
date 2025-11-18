@@ -12,7 +12,7 @@ export class AuthService {
     const state = Math.random().toString(36).slice(2)
     const qr_url = `https://open.work.weixin.qq.com/wwopen/sso/qrConnect?appid=${corpId}&agentid=${agentId}&redirect_uri=${encodeURIComponent(redirect)}&state=${state}`
     const oauth_url = `https://open.weixin.qq.com/connect/oauth2/authorize?appid=${corpId}&redirect_uri=${encodeURIComponent(redirect)}&response_type=code&scope=snsapi_userinfo&state=${state}#wechat_redirect`
-    return { qr_url, oauth_url, state }
+    return { qr_url, oauth_url, state, appid: corpId, agentid: agentId, redirect_uri: redirect }
   }
 
   async handleCallback(code: string, state: string) {
