@@ -6,17 +6,24 @@ import * as crypto from 'crypto'
 
 @Injectable()
 export class AuthService {
+  private readonly issuedStates = new Map<string, number>()
+  private readonly STATE_TTL_MS = 5 * 60 * 1000
   constructor(private readonly users: UsersService, private readonly jwt: JwtService, private readonly config: ConfigService) {}
 
   buildWeComLoginUrls(redirect: string, corpId: string, agentId: string) {
     const state = Math.random().toString(36).slice(2)
+    this.issuedStates.set(state, Date.now() + this.STATE_TTL_MS)
     const qr_url = `https://open.work.weixin.qq.com/wwopen/sso/qrConnect?appid=${corpId}&agentid=${agentId}&redirect_uri=${encodeURIComponent(redirect)}&state=${state}`
     const oauth_url = `https://open.weixin.qq.com/connect/oauth2/authorize?appid=${corpId}&redirect_uri=${encodeURIComponent(redirect)}&response_type=code&scope=snsapi_userinfo&state=${state}#wechat_redirect`
     return { qr_url, oauth_url, state, appid: corpId, agentid: agentId, redirect_uri: redirect }
   }
 
   async handleCallback(code: string, state: string) {
-    void state
+    const expires = this.issuedStates.get(state)
+    if (!expires || expires < Date.now()) {
+      return { success: false, message: 'invalid_or_expired_state' }
+    }
+    this.issuedStates.delete(state)
     const corpId = this.config.get<string>('WE_COM_CORP_ID') || ''
     const secret = this.config.get<string>('WE_COM_SECRET') || ''
     let wecom_user_id = ''
