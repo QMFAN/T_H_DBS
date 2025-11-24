@@ -70,6 +70,7 @@ const LoginPage: FC = () => {
                     <Button type="primary" size="large" onClick={() => void go('oauth')} loading={loading}>授权登录</Button>
                     <Button size="large" onClick={() => void refreshQR()} loading={loading}>刷新二维码</Button>
                   </Space>
+                  
                 </div>
               </div>
             ),

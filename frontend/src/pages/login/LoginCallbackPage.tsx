@@ -15,8 +15,17 @@ const LoginCallbackPage = () => {
     const run = async () => {
       try {
         const res = await authService.callback({ code, state })
+        if (!res?.access_token || !res?.refresh_token) {
+          localStorage.removeItem('auth_token')
+          localStorage.removeItem('refresh_token')
+          msgApi.error('登录失败：状态过期或回调无效')
+          nav('/login', { replace: true })
+          return
+        }
         localStorage.setItem('auth_token', res.access_token)
         localStorage.setItem('refresh_token', res.refresh_token)
+        try { await authService.me() } catch {}
+        try { window.dispatchEvent(new Event('auth-changed')) } catch {}
         msgApi.success('登录成功')
         nav('/analysis', { replace: true })
       } catch (e: any) {

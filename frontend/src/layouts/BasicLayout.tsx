@@ -82,6 +82,16 @@ const BasicLayout: FC = () => {
     }).catch(() => setUser(null));
   }, []);
 
+  useEffect(() => {
+    const handler = () => {
+      authService.me().then((r) => {
+        if (r?.user) setUser(r.user); else setUser(null);
+      }).catch(() => setUser(null));
+    }
+    window.addEventListener('auth-changed', handler)
+    return () => { window.removeEventListener('auth-changed', handler) }
+  }, [])
+
   const logout = () => {
     localStorage.removeItem('auth_token');
     localStorage.removeItem('refresh_token');

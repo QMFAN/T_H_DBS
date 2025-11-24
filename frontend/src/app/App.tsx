@@ -1,8 +1,9 @@
-import { ConfigProvider, theme } from 'antd';
+import { ConfigProvider, theme, Spin } from 'antd';
 import zhCN from 'antd/locale/zh_CN';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { FC } from 'react';
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { BrowserRouter, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import BasicLayout from '../layouts/BasicLayout';
 import LoginPage from '../pages/login/LoginPage';
 import LoginCallbackPage from '../pages/login/LoginCallbackPage';
@@ -17,15 +18,40 @@ const queryClient = new QueryClient();
 const App: FC = () => {
   if (typeof window !== 'undefined') {
     const _warn = console.warn;
+    const _err = console.error;
+    const _log = console.log;
     console.warn = (...args: any[]) => {
       const msg = args && args[0];
-      if (typeof msg === 'string' && msg.includes('[antd: compatible]')) return;
+      if (typeof msg === 'string' && (msg.includes('[antd: compatible]') || msg.includes('Tracking Prevention blocked access to storage'))) return;
       _warn(...args);
+    };
+    console.error = (...args: any[]) => {
+      const msg = args && args[0];
+      if (typeof msg === 'string' && msg.includes('Tracking Prevention blocked access to storage')) return;
+      _err(...args);
+    };
+    console.log = (...args: any[]) => {
+      const msg = args && args[0];
+      if (typeof msg === 'string' && msg.includes('post message redirect')) return;
+      _log(...args);
     };
   }
   const RequireAuth: FC<{ children: any }> = ({ children }) => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
-    if (!token) return <Navigate to="/login" replace />;
+    const [status, setStatus] = useState<'checking' | 'ok' | 'fail'>(token ? 'checking' : 'fail');
+    const nav = useNavigate();
+    useEffect(() => {
+      if (!token) { setStatus('fail'); return; }
+      import('../services/authService').then(({ authService }) => {
+        authService.me().then((r: any) => {
+          if (r?.user) setStatus('ok'); else {
+            localStorage.removeItem('auth_token'); localStorage.removeItem('refresh_token'); setStatus('fail'); nav('/login', { replace: true });
+          }
+        }).catch(() => { localStorage.removeItem('auth_token'); localStorage.removeItem('refresh_token'); setStatus('fail'); nav('/login', { replace: true }); });
+      });
+    }, [token]);
+    if (status === 'checking') return (<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}><Spin /></div>);
+    if (status === 'fail') return <Navigate to="/login" replace />;
     return children as any;
   };
   return (
