@@ -1,4 +1,4 @@
-import { Card, Descriptions, Table, Drawer, Space, Button, DatePicker } from 'antd';
+import { Card, Descriptions, Table, Drawer, Space, Button, DatePicker, Typography } from 'antd';
 import type { FC } from 'react';
 import { useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -65,7 +65,7 @@ const DatabaseStatusPage: FC = () => {
     { title: '数据量', dataIndex: 'count', width: 120 },
     { title: '最早时间', dataIndex: 'timeMin', render: (v: string) => (v ? dayjs(v).format('YYYY-MM-DD HH:mm') : '-') },
     { title: '最晚时间', dataIndex: 'timeMax', render: (v: string) => (v ? dayjs(v).format('YYYY-MM-DD HH:mm') : '-') },
-    { title: '段数量', dataIndex: 'segmentsCount', width: 120 },
+    { title: '段数量（按天粒度）', dataIndex: 'segmentsCount', width: 120 },
     {
       title: '操作',
       width: 160,
@@ -104,6 +104,9 @@ const DatabaseStatusPage: FC = () => {
         // 简易防抖：避免频繁拖动产生多次拉取
         setTimeout(() => { setRange(next); setAreasPage(1); }, 300)
       }} showTime />}> 
+        <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+          说明：列表“段数量”为按天粒度的连续天段；抽屉“时间段”为记录粒度（默认容忍20分钟缺口）。
+        </Typography.Text>
         <Table
           rowKey={(r) => String(r.areaId)}
           loading={isLoadingAll}
@@ -140,6 +143,7 @@ const DatabaseStatusPage: FC = () => {
         destroyOnClose
       >
         <Space direction="vertical" style={{ width: '100%' }}>
+          <Typography.Text type="secondary" style={{ fontSize: 12 }}>时间段：记录粒度（默认容忍20分钟缺口）</Typography.Text>
           <Table
             rowKey={(r) => `${r.start}-${r.end}`}
             dataSource={segmentsData?.segments ?? []}
