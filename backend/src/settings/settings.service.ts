@@ -1,4 +1,7 @@
 import { Injectable, BadRequestException } from '@nestjs/common'
+import { ConfigService } from '@nestjs/config'
+import * as fs from 'fs'
+import * as path from 'path'
 import { InjectRepository } from '@nestjs/typeorm'
 import { Repository } from 'typeorm'
 import { AreaDefaultsEntity } from '../entities/area-defaults.entity'
@@ -18,7 +21,62 @@ export class SettingsService {
     @InjectRepository(ImportTask) private readonly taskRepo: Repository<ImportTask>,
     @Inject(ANOMALY_STORE) private readonly anomalyStore: AnomalyStore,
     private readonly analyticsCache: AnalyticsCacheService,
+    private readonly config: ConfigService,
   ) {}
+
+  private deviationTextDefaults() {
+    return {
+      roomLabelSuffix: '动物室',
+      tempIntroTemplate: '试验方案规定动物室内的温度为{tempMin}℃至{tempMax}℃，但本项目所在{areaText}出现温度偏离的情况：',
+      humIntroTemplate: '试验方案规定动物室内的相对湿度为{humMin}%至{humMax}%，但本项目所在{areaText}出现相对湿度偏离的情况：',
+      tempLineTemplate: '（{index}）在{date}的{startTime}至{endTime}，温度为{min}℃至{max}℃。',
+      humLineTemplate: '（{index}）在{date}的{startTime}至{endTime}，相对湿度为{min}%至{max}%。',
+      impactTemplate: '以上时间段{温度/湿度}偏离的幅度小，持续时间短，在{日期}对动物进行一般临床观察未见相关异常，故认为该{温度/湿度}的偏离对试验结果的可靠性及试验的完整性无有害影响。该试验计划偏离将被写入报告。',
+    }
+  }
+
+  private deviationTextFilePath(): string {
+    const base = this.config.get<string>('SETTINGS_STORAGE_DIR') || path.join(process.cwd(), 'storage')
+    return path.join(base, 'deviation-text.json')
+  }
+
+  async getDeviationText(): Promise<{ roomLabelSuffix: string; tempIntroTemplate: string; humIntroTemplate: string; tempLineTemplate: string; humLineTemplate: string; impactTemplate: string }> {
+    const file = this.deviationTextFilePath()
+    try {
+      await fs.promises.mkdir(path.dirname(file), { recursive: true })
+      const buf = await fs.promises.readFile(file, 'utf8')
+      const parsed = JSON.parse(buf)
+      const d = this.deviationTextDefaults()
+      return {
+        roomLabelSuffix: typeof parsed.roomLabelSuffix === 'string' ? parsed.roomLabelSuffix : d.roomLabelSuffix,
+        tempIntroTemplate: typeof parsed.tempIntroTemplate === 'string' ? parsed.tempIntroTemplate : d.tempIntroTemplate,
+        humIntroTemplate: typeof parsed.humIntroTemplate === 'string' ? parsed.humIntroTemplate : d.humIntroTemplate,
+        tempLineTemplate: typeof parsed.tempLineTemplate === 'string' ? parsed.tempLineTemplate : d.tempLineTemplate,
+        humLineTemplate: typeof parsed.humLineTemplate === 'string' ? parsed.humLineTemplate : d.humLineTemplate,
+        impactTemplate: typeof parsed.impactTemplate === 'string' ? parsed.impactTemplate : d.impactTemplate,
+      }
+    } catch {
+      const d = this.deviationTextDefaults()
+      await fs.promises.writeFile(file, JSON.stringify(d, null, 2), 'utf8')
+      return d
+    }
+  }
+
+  async updateDeviationText(payload: any): Promise<{ roomLabelSuffix: string; tempIntroTemplate: string; humIntroTemplate: string; tempLineTemplate: string; humLineTemplate: string; impactTemplate: string }> {
+    const d = this.deviationTextDefaults()
+    const next = {
+      roomLabelSuffix: typeof payload?.roomLabelSuffix === 'string' ? payload.roomLabelSuffix : d.roomLabelSuffix,
+      tempIntroTemplate: typeof payload?.tempIntroTemplate === 'string' ? payload.tempIntroTemplate : d.tempIntroTemplate,
+      humIntroTemplate: typeof payload?.humIntroTemplate === 'string' ? payload.humIntroTemplate : d.humIntroTemplate,
+      tempLineTemplate: typeof payload?.tempLineTemplate === 'string' ? payload.tempLineTemplate : d.tempLineTemplate,
+      humLineTemplate: typeof payload?.humLineTemplate === 'string' ? payload.humLineTemplate : d.humLineTemplate,
+      impactTemplate: typeof payload?.impactTemplate === 'string' ? payload.impactTemplate : d.impactTemplate,
+    }
+    const file = this.deviationTextFilePath()
+    await fs.promises.mkdir(path.dirname(file), { recursive: true })
+    await fs.promises.writeFile(file, JSON.stringify(next, null, 2), 'utf8')
+    return next
+  }
 
   async listAreas(): Promise<Array<{ code: string; name: string }>> {
     const as = await this.areaRepo.find({ order: { id: 'ASC' } })

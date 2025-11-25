@@ -1,4 +1,4 @@
-import { Card, Form, InputNumber, Button, Space, message, Table, Drawer, Modal } from 'antd'
+import { Card, Form, InputNumber, Button, Space, message, Table, Drawer, Modal, Input } from 'antd'
 import type { FC } from 'react'
 import { useEffect, useState } from 'react'
 import http from '../../services/http'
@@ -12,6 +12,8 @@ const SettingsPage: FC = () => {
   const [currentCodes, setCurrentCodes] = useState<string[]>([])
   const [editForm] = Form.useForm()
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([])
+  const [tplForm] = Form.useForm()
+  const [tplLoading, setTplLoading] = useState(false)
 
   const loadAll = async () => {
     setLoading(true)
@@ -40,7 +42,24 @@ const SettingsPage: FC = () => {
     finally { setLoading(false) }
   }
 
-  useEffect(() => { void loadAll() }, [])
+  const loadDeviationText = async () => {
+    setTplLoading(true)
+    try {
+      const r = await http.get('/settings/deviation-text')
+      const cfg = r?.data?.deviationTextCfg || {}
+      tplForm.setFieldsValue({
+        roomLabelSuffix: cfg.roomLabelSuffix ?? '动物室',
+        tempIntroTemplate: cfg.tempIntroTemplate ?? '试验方案规定动物室内的温度为{tempMin}℃至{tempMax}℃，但本项目所在{areaText}出现温度偏离的情况：',
+        humIntroTemplate: cfg.humIntroTemplate ?? '试验方案规定动物室内的相对湿度为{humMin}%至{humMax}%，但本项目所在{areaText}出现相对湿度偏离的情况：',
+        tempLineTemplate: cfg.tempLineTemplate ?? '（{index}）在{date}的{startTime}至{endTime}，温度为{min}℃至{max}℃。',
+        humLineTemplate: cfg.humLineTemplate ?? '（{index}）在{date}的{startTime}至{endTime}，相对湿度为{min}%至{max}%。',
+        impactTemplate: cfg.impactTemplate ?? '以上时间段{温度/湿度}偏离的幅度小，持续时间短，在{日期}对动物进行一般临床观察未见相关异常，故认为该{温度/湿度}的偏离对试验结果的可靠性及试验的完整性无有害影响。该试验计划偏离将被写入报告。',
+      })
+    } catch (e: any) { msg.error(e?.message ?? '加载模板失败') }
+    finally { setTplLoading(false) }
+  }
+
+  useEffect(() => { void loadAll(); void loadDeviationText() }, [])
 
   const openEdit = (codes: string[], bulk: boolean) => {
     setCurrentCodes(codes)
@@ -145,6 +164,48 @@ const SettingsPage: FC = () => {
             </Space>
           </Form>
         </Drawer>
+      </Card>
+
+      <Card title="系统设置（偏离内容模板）" extra={<Button onClick={loadDeviationText} loading={tplLoading}>刷新</Button>}>
+        <Form form={tplForm} layout="vertical" onFinish={async (v) => {
+          setTplLoading(true)
+          try {
+            const payload = {
+              roomLabelSuffix: v.roomLabelSuffix,
+              tempIntroTemplate: v.tempIntroTemplate,
+              humIntroTemplate: v.humIntroTemplate,
+              tempLineTemplate: v.tempLineTemplate,
+              humLineTemplate: v.humLineTemplate,
+              impactTemplate: v.impactTemplate,
+            }
+            const r = await http.put('/settings/deviation-text', payload)
+            const ok = r?.data?.success === true
+            if (ok) { msg.success('模板已保存') } else { msg.warning('保存结果未知') }
+          } catch (e: any) { msg.error(e?.response?.data?.message ?? (e?.message ?? '保存失败')) }
+          finally { setTplLoading(false) }
+        }}>
+          <Form.Item label="房间后缀" name="roomLabelSuffix" rules={[{ required: true }]}>
+            <Input placeholder="例如：动物室" />
+          </Form.Item>
+          <Form.Item label="温度偏离引言模板" name="tempIntroTemplate" rules={[{ required: true }]}>
+            <Input.TextArea rows={3} placeholder="包含 {tempMin}、{tempMax}、{areaText} 变量" />
+          </Form.Item>
+          <Form.Item label="相对湿度偏离引言模板" name="humIntroTemplate" rules={[{ required: true }]}>
+            <Input.TextArea rows={3} placeholder="包含 {humMin}、{humMax}、{areaText} 变量" />
+          </Form.Item>
+          <Form.Item label="温度行模板" name="tempLineTemplate" rules={[{ required: true }]}>
+            <Input.TextArea rows={2} placeholder="包含 {index}、{date}、{startTime}、{endTime}、{min}、{max} 变量" />
+          </Form.Item>
+          <Form.Item label="相对湿度行模板" name="humLineTemplate" rules={[{ required: true }]}>
+            <Input.TextArea rows={2} placeholder="包含 {index}、{date}、{startTime}、{endTime}、{min}、{max} 变量" />
+          </Form.Item>
+          <Form.Item label="影响评估统一模板" name="impactTemplate" rules={[{ required: true }]}>
+            <Input.TextArea rows={3} placeholder="请输入固定文本，不替换任何变量" />
+          </Form.Item>
+          <Space>
+            <Button htmlType="submit" type="primary" loading={tplLoading}>保存模板</Button>
+          </Space>
+        </Form>
       </Card>
     </Space>
   )

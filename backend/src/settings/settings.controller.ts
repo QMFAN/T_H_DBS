@@ -20,4 +20,16 @@ export class SettingsController {
     await this.svc.deleteArea(code)
     return { success: true }
   }
+
+  @Get('deviation-text')
+  async getDeviationText() {
+    const cfg = await this.svc.getDeviationText()
+    return { deviationTextCfg: cfg }
+  }
+
+  @Put('deviation-text')
+  async updateDeviationText(@Body() body: any) {
+    const saved = await this.svc.updateDeviationText(body)
+    return { success: true, deviationTextCfg: saved }
+  }
 }

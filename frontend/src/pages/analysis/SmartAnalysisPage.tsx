@@ -1,4 +1,4 @@
-import { Card, DatePicker, Form, InputNumber, Select, Space, Button, Divider, Typography, Table, Tag, Row, Col, message, List, Switch } from 'antd';
+import { Card, DatePicker, Form, InputNumber, Select, Space, Button, Divider, Typography, Table, Tag, Row, Col, message, List, Switch, Drawer, Tabs } from 'antd';
 import * as echarts from 'echarts';
 import type { FC } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -26,6 +26,10 @@ const SmartAnalysisPage: FC = () => {
   const curveChartRef = useRef<any>(null);
   const [showTemp, setShowTemp] = useState<boolean>(true);
   const [showHum, setShowHum] = useState<boolean>(true);
+  const [deviationDrawerOpen, setDeviationDrawerOpen] = useState<boolean>(false);
+  const [deviationActiveTab, setDeviationActiveTab] = useState<string>('content');
+  const [deviationTextCfg, setDeviationTextCfg] = useState<{ roomLabelSuffix: string; tempIntroTemplate: string; humIntroTemplate: string; tempLineTemplate?: string; humLineTemplate?: string; impactTempTemplate?: string; impactHumTemplate?: string } | null>(null);
+  const fmt1 = (v: number | null | undefined) => (v == null ? '-' : Number(v).toFixed(1));
   const DEFAULTS = { tempMin: 20, tempMax: 26, humidityMin: 40, humidityMax: 70, tempDurationMin: 30, humidityDurationMin: 30 };
   const [form] = Form.useForm();
   const cacheLoadedRef = useRef(false);
@@ -47,6 +51,24 @@ const SmartAnalysisPage: FC = () => {
       if (c.anaRes) setAnaRes(c.anaRes);
     }
     cacheLoadedRef.current = true;
+  }, []);
+
+  useEffect(() => {
+    const BASE = { roomLabelSuffix: '动物室', tempIntroTemplate: '试验方案规定动物室内的温度为{tempMin}℃至{tempMax}℃，但本项目所在{areaText}出现温度偏离的情况：', humIntroTemplate: '试验方案规定动物室内的相对湿度为{humMin}%至{humMax}%，但本项目所在{areaText}出现相对湿度偏离的情况：', tempLineTemplate: '（{index}）在{date}的{startTime}至{endTime}，温度为{min}℃至{max}℃。', humLineTemplate: '（{index}）在{date}的{startTime}至{endTime}，相对湿度为{min}%至{max}%。', impactTempTemplate: '以上时间段温度偏离的幅度小，持续时间短，在{date}对动物进行一般临床观察未见相关异常，故认为该温度的偏离对试验结果的可靠性及试验的完整性无有害影响。该试验计划偏离将被写入报告。', impactHumTemplate: '以上时间段相对湿度偏离的幅度小，持续时间短，在{date}对动物进行一般临床观察未见相关异常，故认为该相对湿度的偏离对试验结果的可靠性及试验的完整性无有害影响。该试验计划偏离将被写入报告。' };
+    http.get('/settings/deviation-text').then((r) => {
+      const d = r?.data?.deviationTextCfg;
+      if (!d) { setDeviationTextCfg(BASE); return; }
+      const cfg = {
+        roomLabelSuffix: typeof d.roomLabelSuffix === 'string' ? d.roomLabelSuffix : BASE.roomLabelSuffix,
+        tempIntroTemplate: typeof d.tempIntroTemplate === 'string' ? d.tempIntroTemplate : BASE.tempIntroTemplate,
+        humIntroTemplate: typeof d.humIntroTemplate === 'string' ? d.humIntroTemplate : BASE.humIntroTemplate,
+        tempLineTemplate: typeof d.tempLineTemplate === 'string' ? d.tempLineTemplate : BASE.tempLineTemplate,
+        humLineTemplate: typeof d.humLineTemplate === 'string' ? d.humLineTemplate : BASE.humLineTemplate,
+        impactTempTemplate: typeof d.impactTempTemplate === 'string' ? d.impactTempTemplate : BASE.impactTempTemplate,
+        impactHumTemplate: typeof d.impactHumTemplate === 'string' ? d.impactHumTemplate : BASE.impactHumTemplate,
+      };
+      setDeviationTextCfg(cfg);
+    }).catch(() => { setDeviationTextCfg(BASE); });
   }, []);
 
   useEffect(() => {
@@ -369,17 +391,29 @@ const SmartAnalysisPage: FC = () => {
     ) : null}
 
       {anaRes && (
-        <Card title="异常分析结果">
+        <Card title="异常分析结果" extra={<Button type="link" onClick={() => setDeviationDrawerOpen(true)}>偏离描述参考</Button>}>
             <Row gutter={16}>
               <Col xs={24} md={12}>
                 <Typography.Title level={5}>温度连续异常区间（{anaRes.temperature_continuous_anomalies?.length ?? 0}）</Typography.Title>
                 <Table size="small" rowKey={(r) => `${r.start_time}-${r.end_time}-${r.type}`} dataSource={anaRes.temperature_continuous_anomalies || []} pagination={{ pageSize: 10 }}
-                  columns={[{ title: '开始', dataIndex: 'start_time' }, { title: '结束', dataIndex: 'end_time' }, { title: '持续(min)', dataIndex: 'duration_minutes' }, { title: '类型', dataIndex: 'type', render: (t) => <Tag color={t === 'low' ? 'blue' : 'red'}>{t === 'low' ? '偏低' : '偏高'}</Tag> }, { title: '范围', dataIndex: 'range' }]} />
+                  columns={[
+                    { title: '开始', dataIndex: 'start_time' },
+                    { title: '结束', dataIndex: 'end_time' },
+                    { title: '持续(min)', dataIndex: 'duration_minutes' },
+                    { title: '类型', dataIndex: 'type', render: (t) => <Tag color={t === 'low' ? 'blue' : 'red'}>{t === 'low' ? '偏低' : '偏高'}</Tag> },
+                    { title: '范围（℃）', render: (_, r: any) => `${fmt1(r.min_value)}-${fmt1(r.max_value)}` },
+                  ]} />
               </Col>
               <Col xs={24} md={12}>
                 <Typography.Title level={5}>湿度连续异常区间（{anaRes.humidity_continuous_anomalies?.length ?? 0}）</Typography.Title>
                 <Table size="small" rowKey={(r) => `${r.start_time}-${r.end_time}-${r.type}`} dataSource={anaRes.humidity_continuous_anomalies || []} pagination={{ pageSize: 10 }}
-                  columns={[{ title: '开始', dataIndex: 'start_time' }, { title: '结束', dataIndex: 'end_time' }, { title: '持续(min)', dataIndex: 'duration_minutes' }, { title: '类型', dataIndex: 'type', render: (t) => <Tag color={t === 'low' ? 'blue' : 'red'}>{t === 'low' ? '偏低' : '偏高'}</Tag> }, { title: '范围', dataIndex: 'range' }]} />
+                  columns={[
+                    { title: '开始', dataIndex: 'start_time' },
+                    { title: '结束', dataIndex: 'end_time' },
+                    { title: '持续(min)', dataIndex: 'duration_minutes' },
+                    { title: '类型', dataIndex: 'type', render: (t) => <Tag color={t === 'low' ? 'blue' : 'red'}>{t === 'low' ? '偏低' : '偏高'}</Tag> },
+                    { title: '范围（%）', render: (_, r: any) => `${fmt1(r.min_value)}-${fmt1(r.max_value)}` },
+                  ]} />
               </Col>
             </Row>
             <Row gutter={16} style={{ marginTop: 12 }}>
@@ -400,6 +434,95 @@ const SmartAnalysisPage: FC = () => {
             </Row>
         </Card>
       )}
+
+      <Drawer title="偏离描述参考" placement="right" width="33vw" open={deviationDrawerOpen} onClose={() => setDeviationDrawerOpen(false)}>
+        <Tabs activeKey={deviationActiveTab} onChange={setDeviationActiveTab}
+          items={[
+            { key: 'content', label: '偏离内容', children: (
+              <Space direction="vertical" style={{ width: '100%' }}>
+                <Typography.Title level={5}>温度偏离</Typography.Title>
+                {(() => {
+                  const tMin = params.tempMin ?? DEFAULTS.tempMin;
+                  const tMax = params.tempMax ?? DEFAULTS.tempMax;
+                  const areaText = `${area || ''}${(deviationTextCfg?.roomLabelSuffix ?? '动物室')}`;
+                  const tpl = deviationTextCfg?.tempIntroTemplate ?? '试验方案规定动物室内的温度为{tempMin}℃至{tempMax}℃，但本项目所在{areaText}出现温度偏离的情况：';
+                  const intro = tpl.replace(/\{tempMin\}/g, Number(tMin).toFixed(1)).replace(/\{tempMax\}/g, Number(tMax).toFixed(1)).replace(/\{areaText\}/g, areaText);
+                  const list = (anaRes?.temperature_continuous_anomalies || []).map((r, idx) => {
+                    const d = dayjs(r.start_time).format('YYYYMMDD');
+                    const s = dayjs(r.start_time).format('H:mm');
+                    const e = dayjs(r.end_time).format('H:mm');
+                    const ltpl = deviationTextCfg?.tempLineTemplate ?? '（{index}）在{date}的{startTime}至{endTime}，温度为{min}℃至{max}℃。';
+                    return ltpl
+                      .replace(/\{index\}/g, String(idx + 1))
+                      .replace(/\{date\}/g, d)
+                      .replace(/\{startTime\}/g, s)
+                      .replace(/\{endTime\}/g, e)
+                      .replace(/\{min\}/g, fmt1(r.min_value))
+                      .replace(/\{max\}/g, fmt1(r.max_value));
+                  });
+                  return (
+                    <Space direction="vertical" style={{ width: '100%' }}>
+                      <Typography.Paragraph>{intro}</Typography.Paragraph>
+                      {list.length ? list.map((line, i) => (<Typography.Paragraph key={`t-line-${i}`}>{`（${line}`}</Typography.Paragraph>)) : (
+                        <Typography.Paragraph type="secondary">无温度连续异常区间</Typography.Paragraph>
+                      )}
+                    </Space>
+                  );
+                })()}
+                <Divider />
+                <Typography.Title level={5}>相对湿度偏离</Typography.Title>
+                {(() => {
+                  const hMin = params.humidityMin ?? DEFAULTS.humidityMin;
+                  const hMax = params.humidityMax ?? DEFAULTS.humidityMax;
+                  const areaText = `${area || ''}${(deviationTextCfg?.roomLabelSuffix ?? '动物室')}`;
+                  const tpl = deviationTextCfg?.humIntroTemplate ?? '试验方案规定动物室内的相对湿度为{humMin}%至{humMax}%，但本项目所在{areaText}出现相对湿度偏离的情况：';
+                  const intro = tpl.replace(/\{humMin\}/g, Number(hMin).toFixed(1)).replace(/\{humMax\}/g, Number(hMax).toFixed(1)).replace(/\{areaText\}/g, areaText);
+                  const list = (anaRes?.humidity_continuous_anomalies || []).map((r, idx) => {
+                    const d = dayjs(r.start_time).format('YYYYMMDD');
+                    const s = dayjs(r.start_time).format('H:mm');
+                    const e = dayjs(r.end_time).format('H:mm');
+                    const ltpl = deviationTextCfg?.humLineTemplate ?? '（{index}）在{date}的{startTime}至{endTime}，相对湿度为{min}%至{max}%。';
+                    return ltpl
+                      .replace(/\{index\}/g, String(idx + 1))
+                      .replace(/\{date\}/g, d)
+                      .replace(/\{startTime\}/g, s)
+                      .replace(/\{endTime\}/g, e)
+                      .replace(/\{min\}/g, fmt1(r.min_value))
+                      .replace(/\{max\}/g, fmt1(r.max_value));
+                  });
+                  return (
+                    <Space direction="vertical" style={{ width: '100%' }}>
+                      <Typography.Paragraph>{intro}</Typography.Paragraph>
+                      {list.length ? list.map((line, i) => (<Typography.Paragraph key={`h-line-${i}`}>{`（${line}`}</Typography.Paragraph>)) : (
+                        <Typography.Paragraph type="secondary">无相对湿度连续异常区间</Typography.Paragraph>
+                      )}
+                    </Space>
+                  );
+                })()}
+              </Space>
+            ) },
+            { key: 'reason', label: '偏离原因', children: (
+              <Space direction="vertical" style={{ width: '100%' }}>
+                <Typography.Title level={5}>偏离原因</Typography.Title>
+                <Typography.Paragraph type="secondary">占位内容：后续补充可能原因的枚举、规则或说明。</Typography.Paragraph>
+              </Space>
+            ) },
+            { key: 'impact', label: '影响评估', children: (
+              <Space direction="vertical" style={{ width: '100%' }}>
+                <Typography.Title level={5}>影响评估</Typography.Title>
+                {(() => {
+                  const tpl = deviationTextCfg?.impactTemplate ?? '以上时间段{温度/湿度}偏离的幅度小，持续时间短，在{日期}对动物进行一般临床观察未见相关异常，故认为该{温度/湿度}的偏离对试验结果的可靠性及试验的完整性无有害影响。该试验计划偏离将被写入报告。';
+                  return (
+                    <Space direction="vertical" style={{ width: '100%' }}>
+                      <Typography.Paragraph>{tpl}</Typography.Paragraph>
+                    </Space>
+                  )
+                })()}
+              </Space>
+            ) },
+          ]}
+        />
+      </Drawer>
     </Space>
   );
 };
