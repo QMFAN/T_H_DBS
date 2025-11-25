@@ -28,7 +28,7 @@ const SmartAnalysisPage: FC = () => {
   const [showHum, setShowHum] = useState<boolean>(true);
   const [deviationDrawerOpen, setDeviationDrawerOpen] = useState<boolean>(false);
   const [deviationActiveTab, setDeviationActiveTab] = useState<string>('content');
-  const [deviationTextCfg, setDeviationTextCfg] = useState<{ roomLabelSuffix: string; tempIntroTemplate: string; humIntroTemplate: string; tempLineTemplate?: string; humLineTemplate?: string; impactTempTemplate?: string; impactHumTemplate?: string } | null>(null);
+  const [deviationTextCfg, setDeviationTextCfg] = useState<{ roomLabelSuffix: string; tempIntroTemplate: string; humIntroTemplate: string; tempLineTemplate?: string; humLineTemplate?: string; impactTemplate?: string } | null>(null);
   const fmt1 = (v: number | null | undefined) => (v == null ? '-' : Number(v).toFixed(1));
   const DEFAULTS = { tempMin: 20, tempMax: 26, humidityMin: 40, humidityMax: 70, tempDurationMin: 30, humidityDurationMin: 30 };
   const [form] = Form.useForm();
@@ -54,7 +54,14 @@ const SmartAnalysisPage: FC = () => {
   }, []);
 
   useEffect(() => {
-    const BASE = { roomLabelSuffix: '动物室', tempIntroTemplate: '试验方案规定动物室内的温度为{tempMin}℃至{tempMax}℃，但本项目所在{areaText}出现温度偏离的情况：', humIntroTemplate: '试验方案规定动物室内的相对湿度为{humMin}%至{humMax}%，但本项目所在{areaText}出现相对湿度偏离的情况：', tempLineTemplate: '（{index}）在{date}的{startTime}至{endTime}，温度为{min}℃至{max}℃。', humLineTemplate: '（{index}）在{date}的{startTime}至{endTime}，相对湿度为{min}%至{max}%。', impactTempTemplate: '以上时间段温度偏离的幅度小，持续时间短，在{date}对动物进行一般临床观察未见相关异常，故认为该温度的偏离对试验结果的可靠性及试验的完整性无有害影响。该试验计划偏离将被写入报告。', impactHumTemplate: '以上时间段相对湿度偏离的幅度小，持续时间短，在{date}对动物进行一般临床观察未见相关异常，故认为该相对湿度的偏离对试验结果的可靠性及试验的完整性无有害影响。该试验计划偏离将被写入报告。' };
+    const BASE = {
+      roomLabelSuffix: '动物室',
+      tempIntroTemplate: '试验方案规定动物室内的温度为{tempMin}℃至{tempMax}℃，但本项目所在{areaText}出现温度偏离的情况：',
+      humIntroTemplate: '试验方案规定动物室内的相对湿度为{humMin}%至{humMax}%，但本项目所在{areaText}出现相对湿度偏离的情况：',
+      tempLineTemplate: '（{index}）在{date}的{startTime}至{endTime}，温度为{min}℃至{max}℃。',
+      humLineTemplate: '（{index}）在{date}的{startTime}至{endTime}，相对湿度为{min}%至{max}%。',
+      impactTemplate: '以上时间段{温度/湿度}偏离的幅度小，持续时间短，在{日期}对动物进行一般临床观察未见相关异常，故认为该{温度/湿度}的偏离对试验结果的可靠性及试验的完整性无有害影响。该试验计划偏离将被写入报告。',
+    };
     http.get('/settings/deviation-text').then((r) => {
       const d = r?.data?.deviationTextCfg;
       if (!d) { setDeviationTextCfg(BASE); return; }
@@ -64,8 +71,13 @@ const SmartAnalysisPage: FC = () => {
         humIntroTemplate: typeof d.humIntroTemplate === 'string' ? d.humIntroTemplate : BASE.humIntroTemplate,
         tempLineTemplate: typeof d.tempLineTemplate === 'string' ? d.tempLineTemplate : BASE.tempLineTemplate,
         humLineTemplate: typeof d.humLineTemplate === 'string' ? d.humLineTemplate : BASE.humLineTemplate,
-        impactTempTemplate: typeof d.impactTempTemplate === 'string' ? d.impactTempTemplate : BASE.impactTempTemplate,
-        impactHumTemplate: typeof d.impactHumTemplate === 'string' ? d.impactHumTemplate : BASE.impactHumTemplate,
+        impactTemplate: (typeof d.impactTemplate === 'string')
+          ? d.impactTemplate
+          : (typeof d.impactTempTemplate === 'string')
+            ? d.impactTempTemplate
+            : (typeof d.impactHumTemplate === 'string')
+              ? d.impactHumTemplate
+              : BASE.impactTemplate,
       };
       setDeviationTextCfg(cfg);
     }).catch(() => { setDeviationTextCfg(BASE); });
