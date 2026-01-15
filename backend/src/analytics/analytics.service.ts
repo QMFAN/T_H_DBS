@@ -51,16 +51,19 @@ export interface SegmentItem {
 export class AnalyticsService {
   constructor(
     @InjectRepository(Area) private readonly areaRepo: Repository<Area>,
-    @InjectRepository(SensorData) private readonly dataRepo: Repository<SensorData>,
+    @InjectRepository(SensorData)
+    private readonly dataRepo: Repository<SensorData>,
     private readonly cache: AnalyticsCacheService,
     private readonly config: ConfigService,
   ) {}
 
   async getOverview(): Promise<OverviewStats> {
-    const ttl = parseInt(this.config.get<string>('ANALYTICS_OVERVIEW_TTL', '300'), 10) * 1000
-    const key = this.cache.keyOverview()
-    const hit = this.cache.get<OverviewStats>(key)
-    if (hit) return hit
+    const ttl =
+      parseInt(this.config.get<string>('ANALYTICS_OVERVIEW_TTL', '300'), 10) *
+      1000;
+    const key = this.cache.keyOverview();
+    const hit = this.cache.get<OverviewStats>(key);
+    if (hit) return hit;
     const areasTotal = await this.areaRepo.count();
     const recordsTotal = await this.dataRepo.count();
     const qb = this.dataRepo.createQueryBuilder('s');
@@ -76,12 +79,17 @@ export class AnalyticsService {
       areasTotal,
       recordsTotal,
       timeRange: { min, max },
-    }
-    this.cache.set(key, out, ttl)
-    return out
+    };
+    this.cache.set(key, out, ttl);
+    return out;
   }
 
-  async getAreas(query: AreasQuery): Promise<{ list: AreaItem[]; total: number; page: number; pageSize: number }> {
+  async getAreas(query: AreasQuery): Promise<{
+    list: AreaItem[];
+    total: number;
+    page: number;
+    pageSize: number;
+  }> {
     const page = Math.max(1, query.page ?? 1);
     const pageSize = Math.min(100, Math.max(1, query.pageSize ?? 20));
     const order = (query.order ?? 'desc').toUpperCase() as 'ASC' | 'DESC';
@@ -93,17 +101,35 @@ export class AnalyticsService {
     };
     const sortExpr = sortMap[query.sort ?? 'count'] ?? 'count';
 
-    const ttl = parseInt(this.config.get<string>('ANALYTICS_AREAS_TTL', '300'), 10) * 1000
-    const key = this.cache.keyAreas({ page, pageSize, start: query.start, end: query.end, sort: query.sort, order: query.order })
-    const hit = this.cache.get<{ list: AreaItem[]; total: number; page: number; pageSize: number }>(key)
-    if (hit) return hit
+    const ttl =
+      parseInt(this.config.get<string>('ANALYTICS_AREAS_TTL', '300'), 10) *
+      1000;
+    const key = this.cache.keyAreas({
+      page,
+      pageSize,
+      start: query.start,
+      end: query.end,
+      sort: query.sort,
+      order: query.order,
+    });
+    const hit = this.cache.get<{
+      list: AreaItem[];
+      total: number;
+      page: number;
+      pageSize: number;
+    }>(key);
+    if (hit) return hit;
 
     const qb = this.areaRepo
       .createQueryBuilder('a')
       .leftJoin(SensorData, 's', 's.area_id = a.id')
-      .where(query.areaIds?.length ? 'a.id IN (:...areaIds)' : '1=1', { areaIds: query.areaIds ?? [] })
+      .where(query.areaIds?.length ? 'a.id IN (:...areaIds)' : '1=1', {
+        areaIds: query.areaIds ?? [],
+      })
       .andWhere(
-        query.start && query.end ? 's.timestamp BETWEEN :start AND :end' : '1=1',
+        query.start && query.end
+          ? 's.timestamp BETWEEN :start AND :end'
+          : '1=1',
         query.start && query.end ? { start: query.start, end: query.end } : {},
       )
       .select('a.id', 'areaId')
@@ -122,9 +148,13 @@ export class AnalyticsService {
     const totalQb = this.areaRepo
       .createQueryBuilder('a')
       .leftJoin(SensorData, 's', 's.area_id = a.id')
-      .where(query.areaIds?.length ? 'a.id IN (:...areaIds)' : '1=1', { areaIds: query.areaIds ?? [] })
+      .where(query.areaIds?.length ? 'a.id IN (:...areaIds)' : '1=1', {
+        areaIds: query.areaIds ?? [],
+      })
       .andWhere(
-        query.start && query.end ? 's.timestamp BETWEEN :start AND :end' : '1=1',
+        query.start && query.end
+          ? 's.timestamp BETWEEN :start AND :end'
+          : '1=1',
         query.start && query.end ? { start: query.start, end: query.end } : {},
       )
       .select('a.id', 'areaId')
@@ -153,13 +183,18 @@ export class AnalyticsService {
       }),
     );
 
-    const withSegments = list.map((it, idx) => ({ ...it, segmentsCount: segmentsCounts[idx] ?? 0 }));
-    const out = { list: withSegments, total, page, pageSize }
-    this.cache.set(key, out, ttl)
-    return out
+    const withSegments = list.map((it, idx) => ({
+      ...it,
+      segmentsCount: segmentsCounts[idx] ?? 0,
+    }));
+    const out = { list: withSegments, total, page, pageSize };
+    this.cache.set(key, out, ttl);
+    return out;
   }
 
-  async getAreaSegments(query: AreaSegmentsQuery): Promise<{ segments: SegmentItem[]; segmentsCount: number }> {
+  async getAreaSegments(
+    query: AreaSegmentsQuery,
+  ): Promise<{ segments: SegmentItem[]; segmentsCount: number }> {
     const granularity = query.granularity ?? 'record';
     let start = query.start;
     let end = query.end;
@@ -176,10 +211,17 @@ export class AnalyticsService {
     const limit = Math.min(200, Math.max(1, query.limit ?? 50));
 
     if (granularity === 'day') {
-      const ttlDay = parseInt(this.config.get<string>('ANALYTICS_SEGMENTS_DAY_TTL', '1800'), 10) * 1000
-      const keyDay = this.cache.keySegmentsDay(query.areaId, start, end)
-      const hitDay = this.cache.get<{ segments: SegmentItem[]; segmentsCount: number }>(keyDay)
-      if (hitDay) return hitDay
+      const ttlDay =
+        parseInt(
+          this.config.get<string>('ANALYTICS_SEGMENTS_DAY_TTL', '1800'),
+          10,
+        ) * 1000;
+      const keyDay = this.cache.keySegmentsDay(query.areaId, start, end);
+      const hitDay = this.cache.get<{
+        segments: SegmentItem[];
+        segmentsCount: number;
+      }>(keyDay);
+      if (hitDay) return hitDay;
       const dates = await this.dataRepo.query(
         'SELECT DATE(timestamp) AS d FROM sensor_data WHERE area_id = ? GROUP BY d ORDER BY d ASC',
         [query.areaId],
@@ -207,17 +249,29 @@ export class AnalyticsService {
       if (segStart && prev) {
         segments.push({ start: segStart, end: new Date(prev), count });
       }
-      const out = { segments, segmentsCount: segments.length }
-      this.cache.set(keyDay, out, ttlDay)
-      return out
+      const out = { segments, segmentsCount: segments.length };
+      this.cache.set(keyDay, out, ttlDay);
+      return out;
     }
 
     // record 粒度（精确到分钟，默认容忍 20 分钟）
-    const gapMs = Math.max(1, (query.gapToleranceMinutes ?? 20)) * 60 * 1000;
-    const ttlRec = parseInt(this.config.get<string>('ANALYTICS_SEGMENTS_RECORD_TTL', '120'), 10) * 1000
-    const keyRec = this.cache.keySegmentsRecord(query.areaId, start, end, query.gapToleranceMinutes)
-    const hitRec = this.cache.get<{ segments: SegmentItem[]; segmentsCount: number }>(keyRec)
-    if (hitRec) return hitRec
+    const gapMs = Math.max(1, query.gapToleranceMinutes ?? 20) * 60 * 1000;
+    const ttlRec =
+      parseInt(
+        this.config.get<string>('ANALYTICS_SEGMENTS_RECORD_TTL', '120'),
+        10,
+      ) * 1000;
+    const keyRec = this.cache.keySegmentsRecord(
+      query.areaId,
+      start,
+      end,
+      query.gapToleranceMinutes,
+    );
+    const hitRec = this.cache.get<{
+      segments: SegmentItem[];
+      segmentsCount: number;
+    }>(keyRec);
+    if (hitRec) return hitRec;
     const rows = await this.dataRepo
       .createQueryBuilder('s')
       .select(['s.timestamp'])
@@ -230,7 +284,10 @@ export class AnalyticsService {
     let prev: number | null = null;
     let count = 0;
     for (const row of rows) {
-      const curDate = row.s_timestamp instanceof Date ? row.s_timestamp : new Date(row.s_timestamp);
+      const curDate =
+        row.s_timestamp instanceof Date
+          ? row.s_timestamp
+          : new Date(row.s_timestamp);
       const cur = curDate.getTime();
       if (prev === null || cur - prev > gapMs) {
         if (segStart) {
@@ -247,22 +304,32 @@ export class AnalyticsService {
     if (segStart && prev) {
       segments.push({ start: segStart, end: new Date(prev), count });
     }
-    const out = { segments, segmentsCount: segments.length }
-    this.cache.set(keyRec, out, ttlRec)
-    return out
+    const out = { segments, segmentsCount: segments.length };
+    this.cache.set(keyRec, out, ttlRec);
+    return out;
   }
 
-  async streamExport(res: any, payload: { areaIds?: number[]; ranges?: { start: Date; end: Date }[]; granularity?: 'record' | 'day' }) {
+  async streamExport(
+    res: any,
+    payload: {
+      areaIds?: number[];
+      ranges?: { start: Date; end: Date }[];
+      granularity?: 'record' | 'day';
+    },
+  ) {
     const areaIds = payload.areaIds ?? [];
     const ranges = payload.ranges ?? [];
     const hasFilter = areaIds.length > 0 || ranges.length > 0;
-    const qb = this.dataRepo.createQueryBuilder('s').leftJoin('s.area', 'a').select([
-      's.areaId AS areaId',
-      'a.name AS areaName',
-      's.timestamp AS timestamp',
-      's.temperature AS temperature',
-      's.humidity AS humidity',
-    ]);
+    const qb = this.dataRepo
+      .createQueryBuilder('s')
+      .leftJoin('s.area', 'a')
+      .select([
+        's.areaId AS areaId',
+        'a.name AS areaName',
+        's.timestamp AS timestamp',
+        's.temperature AS temperature',
+        's.humidity AS humidity',
+      ]);
 
     if (areaIds.length) {
       qb.where('s.area_id IN (:...areaIds)', { areaIds });
@@ -301,7 +368,10 @@ export class AnalyticsService {
     res.end();
   }
 
-  async previewDelete(payload: { areaIds?: number[]; ranges?: { start: Date; end: Date }[] }) {
+  async previewDelete(payload: {
+    areaIds?: number[];
+    ranges?: { start: Date; end: Date }[];
+  }) {
     const areaIds = payload.areaIds ?? [];
     const ranges = payload.ranges ?? [];
     const byArea: Array<{ areaId: number; count: number }> = [];
@@ -314,22 +384,33 @@ export class AnalyticsService {
 
     // total affected using one query with OR-bracketed ranges
     const totalQb = this.dataRepo.createQueryBuilder('s');
-    if (areaIds.length) totalQb.where('s.area_id IN (:...areaIds)', { areaIds });
+    if (areaIds.length)
+      totalQb.where('s.area_id IN (:...areaIds)', { areaIds });
     if (ranges.length) {
-      totalQb.andWhere(new Brackets((qb) => {
-        ranges.forEach((r, idx) => {
-          qb[idx === 0 ? 'where' : 'orWhere']('s.timestamp BETWEEN :tStart' + idx + ' AND :tEnd' + idx, {
-            ['tStart' + idx]: r.start,
-            ['tEnd' + idx]: r.end,
+      totalQb.andWhere(
+        new Brackets((qb) => {
+          ranges.forEach((r, idx) => {
+            qb[idx === 0 ? 'where' : 'orWhere'](
+              's.timestamp BETWEEN :tStart' + idx + ' AND :tEnd' + idx,
+              {
+                ['tStart' + idx]: r.start,
+                ['tEnd' + idx]: r.end,
+              },
+            );
           });
-        });
-      }));
+        }),
+      );
     }
     let affected = await totalQb.getCount();
     if (affected === 0 && ranges.length && areaIds.length) {
       let sum = 0;
       for (const id of areaIds) {
-        const c = await this.dataRepo.count({ where: ranges.map((r) => ({ areaId: id, timestamp: Between(r.start, r.end) })) });
+        const c = await this.dataRepo.count({
+          where: ranges.map((r) => ({
+            areaId: id,
+            timestamp: Between(r.start, r.end),
+          })),
+        });
         sum += c;
       }
       affected = sum;
@@ -338,16 +419,23 @@ export class AnalyticsService {
     // byArea breakdown
     if (areaIds.length) {
       for (const id of areaIds) {
-        const qb = this.dataRepo.createQueryBuilder('s').where('s.area_id = :areaId', { areaId: id });
+        const qb = this.dataRepo
+          .createQueryBuilder('s')
+          .where('s.area_id = :areaId', { areaId: id });
         if (ranges.length) {
-          qb.andWhere(new Brackets((sub) => {
-            ranges.forEach((r, idx) => {
-              sub[idx === 0 ? 'where' : 'orWhere']('s.timestamp BETWEEN :aStart' + idx + ' AND :aEnd' + idx, {
-                ['aStart' + idx]: r.start,
-                ['aEnd' + idx]: r.end,
+          qb.andWhere(
+            new Brackets((sub) => {
+              ranges.forEach((r, idx) => {
+                sub[idx === 0 ? 'where' : 'orWhere'](
+                  's.timestamp BETWEEN :aStart' + idx + ' AND :aEnd' + idx,
+                  {
+                    ['aStart' + idx]: r.start,
+                    ['aEnd' + idx]: r.end,
+                  },
+                );
               });
-            });
-          }));
+            }),
+          );
         }
         const count = await qb.getCount();
         byArea.push({ areaId: id, count });
@@ -359,7 +447,10 @@ export class AnalyticsService {
       for (const r of ranges) {
         const qb = this.dataRepo.createQueryBuilder('s');
         if (areaIds.length) qb.where('s.area_id IN (:...areaIds)', { areaIds });
-        qb.andWhere('s.timestamp BETWEEN :start AND :end', { start: r.start, end: r.end });
+        qb.andWhere('s.timestamp BETWEEN :start AND :end', {
+          start: r.start,
+          end: r.end,
+        });
         const count = await qb.getCount();
         byRange.push({ start: r.start, end: r.end, count });
       }
@@ -367,7 +458,11 @@ export class AnalyticsService {
     return { affected, byArea, byRange };
   }
 
-  async deleteData(payload: { areaIds?: number[]; ranges?: { start: Date; end: Date }[]; batchSize?: number }) {
+  async deleteData(payload: {
+    areaIds?: number[];
+    ranges?: { start: Date; end: Date }[];
+    batchSize?: number;
+  }) {
     const areaIds = payload.areaIds ?? [];
     const ranges = payload.ranges ?? [];
     const batchSize = Math.min(10000, Math.max(100, payload.batchSize ?? 2000));
@@ -375,7 +470,11 @@ export class AnalyticsService {
     let affected = 0;
     // 无条件：全库删除
     if (areaIds.length === 0 && ranges.length === 0) {
-      const res = await this.dataRepo.createQueryBuilder().delete().from(SensorData).execute();
+      const res = await this.dataRepo
+        .createQueryBuilder()
+        .delete()
+        .from(SensorData)
+        .execute();
       affected += res.affected ?? 0;
       return { affected };
     }
@@ -391,7 +490,7 @@ export class AnalyticsService {
       affected += res.affected ?? 0;
       if ((res.affected ?? 0) === 0) {
         // fallback: chunked by ids
-        // eslint-disable-next-line no-constant-condition
+
         while (true) {
           const rows = await this.dataRepo
             .createQueryBuilder('s')
@@ -400,9 +499,16 @@ export class AnalyticsService {
             .orderBy('s.id', 'ASC')
             .limit(batchSize)
             .getRawMany<{ id: number }>();
-          const ids = rows.map((r) => r.id).filter((v) => typeof v === 'number');
+          const ids = rows
+            .map((r) => r.id)
+            .filter((v) => typeof v === 'number');
           if (ids.length === 0) break;
-          const r2 = await this.dataRepo.createQueryBuilder().delete().from(SensorData).where('id IN (:...ids)', { ids }).execute();
+          const r2 = await this.dataRepo
+            .createQueryBuilder()
+            .delete()
+            .from(SensorData)
+            .where('id IN (:...ids)', { ids })
+            .execute();
           affected += r2.affected ?? ids.length;
         }
       }
@@ -416,23 +522,36 @@ export class AnalyticsService {
           .createQueryBuilder()
           .delete()
           .from(SensorData)
-          .where('timestamp BETWEEN :start AND :end', { start: r.start, end: r.end })
+          .where('timestamp BETWEEN :start AND :end', {
+            start: r.start,
+            end: r.end,
+          })
           .execute();
         affected += res.affected ?? 0;
         if ((res.affected ?? 0) === 0) {
           // fallback: chunked by ids
-          // eslint-disable-next-line no-constant-condition
+
           while (true) {
             const rows = await this.dataRepo
               .createQueryBuilder('s')
               .select('s.id', 'id')
-              .where('s.timestamp BETWEEN :start AND :end', { start: r.start, end: r.end })
+              .where('s.timestamp BETWEEN :start AND :end', {
+                start: r.start,
+                end: r.end,
+              })
               .orderBy('s.id', 'ASC')
               .limit(batchSize)
               .getRawMany<{ id: number }>();
-            const ids = rows.map((rw) => rw.id).filter((v) => typeof v === 'number');
+            const ids = rows
+              .map((rw) => rw.id)
+              .filter((v) => typeof v === 'number');
             if (ids.length === 0) break;
-            const r2 = await this.dataRepo.createQueryBuilder().delete().from(SensorData).where('id IN (:...ids)', { ids }).execute();
+            const r2 = await this.dataRepo
+              .createQueryBuilder()
+              .delete()
+              .from(SensorData)
+              .where('id IN (:...ids)', { ids })
+              .execute();
             affected += r2.affected ?? ids.length;
           }
         }
@@ -447,31 +566,44 @@ export class AnalyticsService {
         .delete()
         .from(SensorData)
         .where('area_id IN (:...areaIds)', { areaIds })
-        .andWhere('timestamp BETWEEN :start AND :end', { start: r.start, end: r.end })
+        .andWhere('timestamp BETWEEN :start AND :end', {
+          start: r.start,
+          end: r.end,
+        })
         .execute();
       affected += res.affected ?? 0;
       if ((res.affected ?? 0) === 0) {
         // fallback: chunked by ids
-        // eslint-disable-next-line no-constant-condition
+
         while (true) {
           const rows = await this.dataRepo
             .createQueryBuilder('s')
             .select('s.id', 'id')
             .where('s.area_id IN (:...areaIds)', { areaIds })
-            .andWhere('s.timestamp BETWEEN :start AND :end', { start: r.start, end: r.end })
+            .andWhere('s.timestamp BETWEEN :start AND :end', {
+              start: r.start,
+              end: r.end,
+            })
             .orderBy('s.id', 'ASC')
             .limit(batchSize)
             .getRawMany<{ id: number }>();
-          const ids = rows.map((rw) => rw.id).filter((v) => typeof v === 'number');
+          const ids = rows
+            .map((rw) => rw.id)
+            .filter((v) => typeof v === 'number');
           if (ids.length === 0) break;
-          const r2 = await this.dataRepo.createQueryBuilder().delete().from(SensorData).where('id IN (:...ids)', { ids }).execute();
+          const r2 = await this.dataRepo
+            .createQueryBuilder()
+            .delete()
+            .from(SensorData)
+            .where('id IN (:...ids)', { ids })
+            .execute();
           affected += r2.affected ?? ids.length;
         }
       }
     }
-    this.cache.del('analytics:overview')
-    this.cache.del('analytics:areas')
-    this.cache.del('analytics:segments:')
+    this.cache.del('analytics:overview');
+    this.cache.del('analytics:areas');
+    this.cache.del('analytics:segments:');
     return { affected };
   }
 }

@@ -1,35 +1,50 @@
-import { Controller, Get, Query, Put, Body, Delete, Param, BadRequestException } from '@nestjs/common'
-import { SettingsService } from './settings.service'
+import {
+  Controller,
+  Get,
+  Query,
+  Put,
+  Body,
+  Delete,
+  Param,
+  BadRequestException,
+} from '@nestjs/common';
+import { SettingsService } from './settings.service';
 
 @Controller('settings')
 export class SettingsController {
   constructor(private readonly svc: SettingsService) {}
 
   @Get('areas')
-  async areas() { return { areas: await this.svc.listAreas() } }
+  async areas() {
+    return { areas: await this.svc.listAreas() };
+  }
 
   @Get('defaults')
-  async getDefaults(@Query('area') area: string) { return { area, defaults: area ? await this.svc.getDefaults(area) : null } }
+  async getDefaults(@Query('area') area: string) {
+    return { area, defaults: area ? await this.svc.getDefaults(area) : null };
+  }
 
   @Put('defaults')
-  async upsert(@Body() body: any) { return { success: true, defaults: await this.svc.upsertDefaults(body) } }
+  async upsert(@Body() body: any) {
+    return { success: true, defaults: await this.svc.upsertDefaults(body) };
+  }
 
   @Delete('areas/:code')
   async deleteArea(@Param('code') code: string) {
-    if (!code) throw new BadRequestException('area code is required')
-    await this.svc.deleteArea(code)
-    return { success: true }
+    if (!code) throw new BadRequestException('area code is required');
+    await this.svc.deleteArea(code);
+    return { success: true };
   }
 
   @Get('deviation-text')
   async getDeviationText() {
-    const cfg = await this.svc.getDeviationText()
-    return { deviationTextCfg: cfg }
+    const cfg = await this.svc.getDeviationText();
+    return { deviationTextCfg: cfg };
   }
 
   @Put('deviation-text')
   async updateDeviationText(@Body() body: any) {
-    const saved = await this.svc.updateDeviationText(body)
-    return { success: true, deviationTextCfg: saved }
+    const saved = await this.svc.updateDeviationText(body);
+    return { success: true, deviationTextCfg: saved };
   }
 }

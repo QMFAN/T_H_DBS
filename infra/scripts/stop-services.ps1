@@ -9,9 +9,9 @@ Write-Host ("[{0}] Stopping monitor window and services..." -f (Get-Date -Format
 try { Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like '*monitor-prod.ps1*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force } } catch {}
 
 if(Get-Command pm2 -ErrorAction SilentlyContinue){
-  & pm2 stop thdbs-backend | Out-Null
-  & pm2 delete thdbs-backend | Out-Null
-  & pm2 save | Out-Null
+  cmd /c pm2 stop thdbs-backend | Out-Null
+  cmd /c pm2 delete thdbs-backend | Out-Null
+  cmd /c pm2 save | Out-Null
 }
 
 $nginxExe = Join-Path $root 'infra/nginx/nginx.exe'

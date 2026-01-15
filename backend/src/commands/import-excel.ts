@@ -10,15 +10,15 @@ async function bootstrap(): Promise<void> {
   const logger = new Logger('ImportExcelCLI');
   const argv = process.argv.slice(2);
   if (!argv.length) {
-    // eslint-disable-next-line no-console
-    console.error('Usage: npm run import:excel -- <file1.xlsx> <file2.xlsx> ...');
+    console.error(
+      'Usage: npm run import:excel -- <file1.xlsx> <file2.xlsx> ...',
+    );
     process.exitCode = 1;
     return;
   }
 
   const files = expandInputs(argv);
   if (!files.length) {
-    // eslint-disable-next-line no-console
     console.error('No readable .xlsx files found for given arguments.');
     process.exitCode = 1;
     return;
@@ -33,8 +33,14 @@ async function bootstrap(): Promise<void> {
 
     for (const result of results) {
       const status = result.imported > 0 ? 'SUCCESS' : 'SKIPPED';
-      const conflictSuffix = result.conflicts && result.conflicts > 0 ? `, conflicts=${result.conflicts}` : '';
-      const resolvedSuffix = typeof result.resolved === 'number' ? `, resolved=${result.resolved}` : '';
+      const conflictSuffix =
+        result.conflicts && result.conflicts > 0
+          ? `, conflicts=${result.conflicts}`
+          : '';
+      const resolvedSuffix =
+        typeof result.resolved === 'number'
+          ? `, resolved=${result.resolved}`
+          : '';
       logger.log(
         `${status} :: ${result.filePath} -> imported=${result.imported}, total=${result.records}, skipped=${result.skipped}, duplicates=${result.duplicates ?? 0}${resolvedSuffix}${conflictSuffix}`,
       );
@@ -65,7 +71,6 @@ async function bootstrap(): Promise<void> {
 }
 
 bootstrap().catch((error) => {
-  // eslint-disable-next-line no-console
   console.error(error);
   process.exit(1);
 });
@@ -82,7 +87,11 @@ function expandInputs(args: string[]): string[] {
     if (stat.isDirectory()) {
       const entries = fs.readdirSync(absolute, { withFileTypes: true });
       for (const entry of entries) {
-        if (entry.isFile() && /\.xlsx?$/i.test(entry.name) && !entry.name.startsWith('~$')) {
+        if (
+          entry.isFile() &&
+          /\.xlsx?$/i.test(entry.name) &&
+          !entry.name.startsWith('~$')
+        ) {
           resolved.push(path.join(absolute, entry.name));
         }
       }
@@ -95,7 +104,10 @@ function expandInputs(args: string[]): string[] {
 
 function sanitizePathArgument(arg: string): string {
   let cleaned = arg.trim();
-  if ((cleaned.startsWith('"') && cleaned.endsWith('"')) || (cleaned.startsWith("'") && cleaned.endsWith("'"))) {
+  if (
+    (cleaned.startsWith('"') && cleaned.endsWith('"')) ||
+    (cleaned.startsWith("'") && cleaned.endsWith("'"))
+  ) {
     cleaned = cleaned.slice(1, -1);
   }
   cleaned = cleaned.replace(/\^/g, '');
@@ -107,6 +119,9 @@ function formatVariantSources(summaries: AnomalySourceSummaryRecord[]): string {
     return 'unknown';
   }
   return summaries
-    .map((summary) => `${summary.label}(${summary.type === 'existing' ? '旧' : '新'}×${summary.count})`)
+    .map(
+      (summary) =>
+        `${summary.label}(${summary.type === 'existing' ? '旧' : '新'}×${summary.count})`,
+    )
     .join('|');
 }

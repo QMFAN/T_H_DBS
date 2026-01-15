@@ -38,7 +38,9 @@ export class ExcelImportController {
       const decoded = buffer.toString('utf8');
       return decoded.includes('\uFFFD') ? rawName : decoded;
     } catch (error) {
-      this.logger.warn(`Failed to decode filename ${rawName}: ${(error as Error).message}`);
+      this.logger.warn(
+        `Failed to decode filename ${rawName}: ${(error as Error).message}`,
+      );
       return rawName;
     }
   }
@@ -53,7 +55,10 @@ export class ExcelImportController {
     @Query('limit') limit?: string,
   ): Promise<ImportHistoryItemDto[]> {
     const parsedLimit = limit ? Number(limit) : undefined;
-    if (parsedLimit !== undefined && (Number.isNaN(parsedLimit) || parsedLimit <= 0)) {
+    if (
+      parsedLimit !== undefined &&
+      (Number.isNaN(parsedLimit) || parsedLimit <= 0)
+    ) {
       throw new BadRequestException('limit must be a positive number');
     }
     return this.excelImportService.getImportHistory(parsedLimit);
@@ -88,13 +93,20 @@ export class ExcelImportController {
   }
 
   @Post('history/bulk-delete')
-  async bulkDeleteHistory(@Body() body: { taskIds: string[]; deleteFile?: boolean }): Promise<{ deleted: number }> {
-    const ids = Array.isArray(body?.taskIds) ? body.taskIds.filter((x) => typeof x === 'string' && x.trim()) : []
+  async bulkDeleteHistory(
+    @Body() body: { taskIds: string[]; deleteFile?: boolean },
+  ): Promise<{ deleted: number }> {
+    const ids = Array.isArray(body?.taskIds)
+      ? body.taskIds.filter((x) => typeof x === 'string' && x.trim())
+      : [];
     if (!ids.length) {
-      throw new BadRequestException('taskIds is required')
+      throw new BadRequestException('taskIds is required');
     }
-    const deleted = await this.excelImportService.bulkDeleteImportTasks(ids, !!body?.deleteFile)
-    return { deleted }
+    const deleted = await this.excelImportService.bulkDeleteImportTasks(
+      ids,
+      !!body?.deleteFile,
+    );
+    return { deleted };
   }
 
   @Get('conflicts')
@@ -103,7 +115,9 @@ export class ExcelImportController {
   }
 
   @Post('conflicts/bulk-resolve')
-  async bulkResolveLegacy(@Body() body: BulkResolveAnomaliesDto): Promise<void> {
+  async bulkResolveLegacy(
+    @Body() body: BulkResolveAnomaliesDto,
+  ): Promise<void> {
     await this.excelImportService.bulkResolveAnomalies(body);
   }
 
@@ -125,17 +139,24 @@ export class ExcelImportController {
 
   @Post('upload')
   @UseInterceptors(FilesInterceptor('files'))
-  async uploadFiles(@UploadedFiles() files: unknown[]): Promise<UploadResponseDto> {
-    const normalized = (Array.isArray(files) ? files : []).map((file) => {
-      const typed = file as { path?: string; originalname?: string };
-      if (!typed?.path || !typed?.originalname) {
-        return null;
-      }
-      return {
-        path: typed.path,
-        originalname: this.decodeOriginalName(typed.originalname) ?? typed.originalname,
-      };
-    }).filter((item): item is { path: string; originalname: string } => item !== null);
+  async uploadFiles(
+    @UploadedFiles() files: unknown[],
+  ): Promise<UploadResponseDto> {
+    const normalized = (Array.isArray(files) ? files : [])
+      .map((file) => {
+        const typed = file as { path?: string; originalname?: string };
+        if (!typed?.path || !typed?.originalname) {
+          return null;
+        }
+        return {
+          path: typed.path,
+          originalname:
+            this.decodeOriginalName(typed.originalname) ?? typed.originalname,
+        };
+      })
+      .filter(
+        (item): item is { path: string; originalname: string } => item !== null,
+      );
 
     if (!normalized.length) {
       throw new BadRequestException('未收到有效的上传文件');
@@ -144,4 +165,3 @@ export class ExcelImportController {
     return this.excelImportService.upload(normalized);
   }
 }
-

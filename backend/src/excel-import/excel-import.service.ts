@@ -20,7 +20,10 @@ import { SensorData } from '../entities/sensor-data.entity';
 import { ImportTask } from '../entities/import-task.entity';
 import { ANOMALY_STORE, AnomalyStore } from './anomaly-store.interface';
 import type { ImportTaskStatus } from '../entities/import-task.entity';
-import type { AnomalyVariantDto as AnomalyVariantRecord, AnomalySourceSummaryDto as AnomalySourceSummaryRecord } from './dto/import.dto';
+import type {
+  AnomalyVariantDto as AnomalyVariantRecord,
+  AnomalySourceSummaryDto as AnomalySourceSummaryRecord,
+} from './dto/import.dto';
 import type { ImportAnomalyType } from './anomaly-store.interface';
 import type {
   ImportDashboardSummaryDto,
@@ -148,13 +151,22 @@ export class ExcelImportService implements OnModuleInit {
 
   onModuleInit(): void {
     const defaultStorage = path.join(process.cwd(), 'storage', 'imports');
-    this.storageDir = this.configService.get<string>('IMPORT_STORAGE_DIR', defaultStorage);
-    this.publicBaseUrl = this.configService.get<string>('IMPORT_STORAGE_BASE_URL', '/imports');
+    this.storageDir = this.configService.get<string>(
+      'IMPORT_STORAGE_DIR',
+      defaultStorage,
+    );
+    this.publicBaseUrl = this.configService.get<string>(
+      'IMPORT_STORAGE_BASE_URL',
+      '/imports',
+    );
 
     try {
       fs.mkdirSync(this.storageDir, { recursive: true });
     } catch (error) {
-      this.logger.error(`Failed to ensure storage directory: ${this.storageDir}`, error as Error);
+      this.logger.error(
+        `Failed to ensure storage directory: ${this.storageDir}`,
+        error as Error,
+      );
       throw error;
     }
   }
@@ -188,7 +200,7 @@ export class ExcelImportService implements OnModuleInit {
       })
       .join('； ');
 
-    await this.invalidateAnalyticsCaches()
+    await this.invalidateAnalyticsCaches();
     return {
       taskId: batchId,
       imported: totals.imported,
@@ -200,15 +212,17 @@ export class ExcelImportService implements OnModuleInit {
 
   private async invalidateAnalyticsCaches(): Promise<void> {
     try {
-      this.analyticsCache.del('analytics:overview')
-      this.analyticsCache.del('analytics:areas')
-      this.analyticsCache.del('analytics:segments:')
+      this.analyticsCache.del('analytics:overview');
+      this.analyticsCache.del('analytics:areas');
+      this.analyticsCache.del('analytics:segments:');
     } catch {}
   }
 
   async getDashboardSummary(): Promise<ImportDashboardSummaryDto> {
-    await this.autoResolveExpiredAnomalies()
-    const pendingFiles = await this.importTaskRepository.count({ where: { status: 'pending' } });
+    await this.autoResolveExpiredAnomalies();
+    const pendingFiles = await this.importTaskRepository.count({
+      where: { status: 'pending' },
+    });
 
     const importedTotalRaw = await this.importTaskRepository
       .createQueryBuilder('task')
@@ -226,9 +240,13 @@ export class ExcelImportService implements OnModuleInit {
 
     return {
       pendingFiles,
-      importedRecords: importedTotalRaw?.total ? Number(importedTotalRaw.total) : 0,
+      importedRecords: importedTotalRaw?.total
+        ? Number(importedTotalRaw.total)
+        : 0,
       pendingConflicts,
-      lastImportAt: lastImportRaw?.createdAt ? lastImportRaw.createdAt.toISOString() : undefined,
+      lastImportAt: lastImportRaw?.createdAt
+        ? lastImportRaw.createdAt.toISOString()
+        : undefined,
     };
   }
 
@@ -253,7 +271,15 @@ export class ExcelImportService implements OnModuleInit {
     }));
   }
 
-  async getImportHistoryPaged(page = 1, pageSize = 10): Promise<{ items: ImportHistoryItemDto[]; total: number; page: number; pageSize: number; }> {
+  async getImportHistoryPaged(
+    page = 1,
+    pageSize = 10,
+  ): Promise<{
+    items: ImportHistoryItemDto[];
+    total: number;
+    page: number;
+    pageSize: number;
+  }> {
     const skip = (page - 1) * pageSize;
     const [tasks, total] = await this.importTaskRepository.findAndCount({
       order: { createdAt: 'DESC' },
@@ -301,32 +327,46 @@ export class ExcelImportService implements OnModuleInit {
         this.logger.warn(`删除文件失败 ${task.storedPath}`, error as Error);
       }
     }
-    await this.invalidateAnalyticsCaches()
+    await this.invalidateAnalyticsCaches();
   }
 
-  async bulkDeleteImportTasks(taskIds: string[], deleteFile: boolean): Promise<number> {
-    let count = 0
+  async bulkDeleteImportTasks(
+    taskIds: string[],
+    deleteFile: boolean,
+  ): Promise<number> {
+    let count = 0;
     for (const id of taskIds) {
       try {
-        await this.deleteImportTask(id, deleteFile)
-        count += 1
-      } catch (e) {
-      }
+        await this.deleteImportTask(id, deleteFile);
+        count += 1;
+      } catch (e) {}
     }
-    return count
+    return count;
   }
 
   async getAnomalyOverview(): Promise<ImportAnomalyOverviewDto> {
-    await this.autoResolveExpiredAnomalies()
+    await this.autoResolveExpiredAnomalies();
     return this.anomalyStore.getOverview();
   }
 
-  private buildDuplicateSummary(anomalies: Array<{ anomalyId: string; areaName: string; variants: AnomalyVariantRecord[] }>): DuplicateSummaryDto {
-    const areaMap = new Map<string, { anomalyCount: number; recordCount: number }>();
+  private buildDuplicateSummary(
+    anomalies: Array<{
+      anomalyId: string;
+      areaName: string;
+      variants: AnomalyVariantRecord[];
+    }>,
+  ): DuplicateSummaryDto {
+    const areaMap = new Map<
+      string,
+      { anomalyCount: number; recordCount: number }
+    >();
     let totalRecords = 0;
 
     for (const anomaly of anomalies) {
-      const recordCount = anomaly.variants.reduce((sum, v) => sum + v.newCount, 0);
+      const recordCount = anomaly.variants.reduce(
+        (sum, v) => sum + v.newCount,
+        0,
+      );
       totalRecords += recordCount;
 
       const existing = areaMap.get(anomaly.areaName);
@@ -338,13 +378,13 @@ export class ExcelImportService implements OnModuleInit {
       }
     }
 
-    const areaSummaries: DuplicateAreaSummaryDto[] = Array.from(areaMap.entries()).map(
-      ([areaName, stats]) => ({
-        areaName,
-        anomalyCount: stats.anomalyCount,
-        recordCount: stats.recordCount,
-      }),
-    );
+    const areaSummaries: DuplicateAreaSummaryDto[] = Array.from(
+      areaMap.entries(),
+    ).map(([areaName, stats]) => ({
+      areaName,
+      anomalyCount: stats.anomalyCount,
+      recordCount: stats.recordCount,
+    }));
 
     return {
       pendingCount: anomalies.length,
@@ -354,8 +394,25 @@ export class ExcelImportService implements OnModuleInit {
     };
   }
 
-  private buildAnomalyGroups(anomalies: Array<{ anomalyId: string; areaName: string; timestamp: Date; status: 'pending' | 'resolved'; variants: AnomalyVariantRecord[] }>): AnomalyAreaGroupDto[] {
-    const areaMap = new Map<string, Array<{ anomalyId: string; areaName: string; timestamp: Date; status: 'pending' | 'resolved'; variants: AnomalyVariantRecord[] }>>();
+  private buildAnomalyGroups(
+    anomalies: Array<{
+      anomalyId: string;
+      areaName: string;
+      timestamp: Date;
+      status: 'pending' | 'resolved';
+      variants: AnomalyVariantRecord[];
+    }>,
+  ): AnomalyAreaGroupDto[] {
+    const areaMap = new Map<
+      string,
+      Array<{
+        anomalyId: string;
+        areaName: string;
+        timestamp: Date;
+        status: 'pending' | 'resolved';
+        variants: AnomalyVariantRecord[];
+      }>
+    >();
 
     for (const anomaly of anomalies) {
       const existing = areaMap.get(anomaly.areaName);
@@ -372,13 +429,17 @@ export class ExcelImportService implements OnModuleInit {
         anomalyId: anomaly.anomalyId,
         timestamp: anomaly.timestamp.toISOString(),
         status: anomaly.status,
-        variants: anomaly.variants.map((variant, index) => this.normalizeVariantRecord(variant, index)),
+        variants: anomaly.variants.map((variant, index) =>
+          this.normalizeVariantRecord(variant, index),
+        ),
       })),
     }));
   }
 
   async clearAllData(): Promise<void> {
-    this.logger.warn('Clearing areas, sensor data, import tasks and conflicts tables');
+    this.logger.warn(
+      'Clearing areas, sensor data, import tasks and conflicts tables',
+    );
     const manager = this.areaRepository.manager;
     await manager.query('SET FOREIGN_KEY_CHECKS=0');
     try {
@@ -389,7 +450,7 @@ export class ExcelImportService implements OnModuleInit {
     } finally {
       await manager.query('SET FOREIGN_KEY_CHECKS=1');
     }
-    await this.invalidateAnalyticsCaches()
+    await this.invalidateAnalyticsCaches();
   }
 
   async bulkResolveAnomalies(dto: BulkResolveAnomaliesDto): Promise<void> {
@@ -397,8 +458,25 @@ export class ExcelImportService implements OnModuleInit {
     if (!anomalyIds.length) {
       throw new BadRequestException('未提供需要处理的冲突记录');
     }
-    const resolved = await this.anomalyStore.bulkResolve(dto.type, dto.action, anomalyIds);
-    const byTask = new Map<number, { count: number; upserts: Array<{ areaId: number; timestamp: Date; temperature: string | null; humidity: string | null; fileSource: string | null }>; areaCache: Map<string, Area> }>();
+    const resolved = await this.anomalyStore.bulkResolve(
+      dto.type,
+      dto.action,
+      anomalyIds,
+    );
+    const byTask = new Map<
+      number,
+      {
+        count: number;
+        upserts: Array<{
+          areaId: number;
+          timestamp: Date;
+          temperature: string | null;
+          humidity: string | null;
+          fileSource: string | null;
+        }>;
+        areaCache: Map<string, Area>;
+      }
+    >();
 
     for (const item of resolved) {
       let entry = byTask.get(item.taskNumericId);
@@ -431,14 +509,19 @@ export class ExcelImportService implements OnModuleInit {
         const chunkSize = 1000;
         for (let i = 0; i < group.upserts.length; i += chunkSize) {
           const chunk = group.upserts.slice(i, i + chunkSize);
-          await this.sensorDataRepository.upsert(chunk, ['areaId', 'timestamp']);
+          await this.sensorDataRepository.upsert(chunk, [
+            'areaId',
+            'timestamp',
+          ]);
         }
       }
     }
 
     // 批量更新任务状态
     for (const [taskId, group] of byTask.entries()) {
-      const task = await this.importTaskRepository.findOne({ where: { id: taskId } });
+      const task = await this.importTaskRepository.findOne({
+        where: { id: taskId },
+      });
       if (!task) continue;
       task.manualResolved += group.count;
       task.anomaliesProcessed = (task.anomaliesProcessed ?? 0) + group.count;
@@ -447,7 +530,8 @@ export class ExcelImportService implements OnModuleInit {
       } else if (dto.action === 'overwrite') {
         task.overwriteCount = (task.overwriteCount ?? 0) + group.count;
       }
-      const pendingForTask = await this.anomalyStore.pendingCountForTask(taskId);
+      const pendingForTask =
+        await this.anomalyStore.pendingCountForTask(taskId);
       task.status = pendingForTask === 0 ? 'completed' : 'processing';
       task.progressLastAt = new Date();
       await this.importTaskRepository.save(task);
@@ -455,31 +539,41 @@ export class ExcelImportService implements OnModuleInit {
   }
 
   private async autoResolveExpiredAnomalies(): Promise<void> {
-    const resolved = await this.anomalyStore.autoResolveExpired()
-    if (!resolved.length) return
-    const byTask = new Map<number, { count: number }>()
+    const resolved = await this.anomalyStore.autoResolveExpired();
+    if (!resolved.length) return;
+    const byTask = new Map<number, { count: number }>();
     for (const item of resolved) {
-      let entry = byTask.get(item.taskNumericId)
+      let entry = byTask.get(item.taskNumericId);
       if (!entry) {
-        entry = { count: 0 }
-        byTask.set(item.taskNumericId, entry)
+        entry = { count: 0 };
+        byTask.set(item.taskNumericId, entry);
       }
-      entry.count += 1
+      entry.count += 1;
     }
     for (const [taskId, group] of byTask.entries()) {
-      const task = await this.importTaskRepository.findOne({ where: { id: taskId } })
-      if (!task) continue
-      task.anomaliesProcessed = (task.anomaliesProcessed ?? 0) + group.count
-      task.skipCount = (task.skipCount ?? 0) + group.count
-      const pendingForTask = await this.anomalyStore.pendingCountForTask(taskId)
-      task.status = pendingForTask === 0 ? 'completed' : 'processing'
-      task.progressLastAt = new Date()
-      await this.importTaskRepository.save(task)
+      const task = await this.importTaskRepository.findOne({
+        where: { id: taskId },
+      });
+      if (!task) continue;
+      task.anomaliesProcessed = (task.anomaliesProcessed ?? 0) + group.count;
+      task.skipCount = (task.skipCount ?? 0) + group.count;
+      const pendingForTask =
+        await this.anomalyStore.pendingCountForTask(taskId);
+      task.status = pendingForTask === 0 ? 'completed' : 'processing';
+      task.progressLastAt = new Date();
+      await this.importTaskRepository.save(task);
     }
   }
 
-  async resolveAnomaly(anomalyId: string, dto: ResolveAnomalyDto): Promise<void> {
-    const resolved = await this.anomalyStore.resolveOne(anomalyId, dto.action, dto.variantId);
+  async resolveAnomaly(
+    anomalyId: string,
+    dto: ResolveAnomalyDto,
+  ): Promise<void> {
+    const resolved = await this.anomalyStore.resolveOne(
+      anomalyId,
+      dto.action,
+      dto.variantId,
+    );
     if (!resolved) {
       throw new NotFoundException(`未找到编号为 ${anomalyId} 的异常记录`);
     }
@@ -487,17 +581,22 @@ export class ExcelImportService implements OnModuleInit {
       const areaInfo = this.deriveAreaInfoFromName(resolved.areaName);
       const area = await this.getOrCreateArea(areaInfo.code, areaInfo.name);
       const fileSource = this.buildResolvedFileSource(resolved.resolvedVariant);
-      await this.sensorDataRepository.upsert([
-        {
-          areaId: area.id,
-          timestamp: resolved.timestamp,
-          temperature: resolved.resolvedVariant.temperature,
-          humidity: resolved.resolvedVariant.humidity,
-          fileSource,
-        },
-      ], ['areaId', 'timestamp']);
+      await this.sensorDataRepository.upsert(
+        [
+          {
+            areaId: area.id,
+            timestamp: resolved.timestamp,
+            temperature: resolved.resolvedVariant.temperature,
+            humidity: resolved.resolvedVariant.humidity,
+            fileSource,
+          },
+        ],
+        ['areaId', 'timestamp'],
+      );
     }
-    const task = await this.importTaskRepository.findOne({ where: { id: resolved.taskNumericId } });
+    const task = await this.importTaskRepository.findOne({
+      where: { id: resolved.taskNumericId },
+    });
     if (task) {
       task.manualResolved += 1;
       task.anomaliesProcessed = (task.anomaliesProcessed ?? 0) + 1;
@@ -506,14 +605,18 @@ export class ExcelImportService implements OnModuleInit {
       } else if (dto.action === 'overwrite') {
         task.overwriteCount = (task.overwriteCount ?? 0) + 1;
       }
-      const pendingForTask = await this.anomalyStore.pendingCountForTask(resolved.taskNumericId);
+      const pendingForTask = await this.anomalyStore.pendingCountForTask(
+        resolved.taskNumericId,
+      );
       task.status = pendingForTask === 0 ? 'completed' : 'processing';
       task.progressLastAt = new Date();
       await this.importTaskRepository.save(task);
     }
   }
 
-  private async processBatch(inputs: ImportPathInput[]): Promise<ImportBatchResult> {
+  private async processBatch(
+    inputs: ImportPathInput[],
+  ): Promise<ImportBatchResult> {
     if (!inputs.length) {
       throw new BadRequestException('未提供可处理的文件');
     }
@@ -547,7 +650,10 @@ export class ExcelImportService implements OnModuleInit {
     return { batchId, summaries, totals };
   }
 
-  private async processInput(batchId: string, input: ImportPathInput): Promise<FileImportSummary> {
+  private async processInput(
+    batchId: string,
+    input: ImportPathInput,
+  ): Promise<FileImportSummary> {
     const absolutePath = path.resolve(input.path);
     const summary: FileImportSummary = {
       filePath: absolutePath,
@@ -571,16 +677,22 @@ export class ExcelImportService implements OnModuleInit {
     summary.publicUrl = archive.publicUrl;
     summary.fileUrl = archive.relativePath;
 
-    const { records, skipped } = this.parseExcelFile(absolutePath, archive.publicUrl);
+    const { records, skipped } = this.parseExcelFile(
+      absolutePath,
+      archive.publicUrl,
+    );
     summary.records = records.length;
     summary.skipped = skipped;
 
     const existingRecords = await this.loadExistingRecords(records);
-    const { resolvedRecords, duplicateCount, anomalyGroups } = this.resolveDuplicateRecords(records, existingRecords);
+    const { resolvedRecords, duplicateCount, anomalyGroups } =
+      this.resolveDuplicateRecords(records, existingRecords);
     summary.duplicates = duplicateCount;
     summary.resolved = resolvedRecords.length;
     // 统计真正的冲突数量（anomaly_type = 'conflict'）
-    summary.conflicts = anomalyGroups.filter(g => g.type === 'conflict').length;
+    summary.conflicts = anomalyGroups.filter(
+      (g) => g.type === 'conflict',
+    ).length;
     summary.anomalyGroups = anomalyGroups;
 
     if (!resolvedRecords.length) {
@@ -592,25 +704,32 @@ export class ExcelImportService implements OnModuleInit {
       summary.imported = resolvedRecords.length;
     }
 
-    const forcedStatus: ImportTaskStatus | undefined = summary.message && summary.conflicts === 0 ? 'failed' : undefined;
+    const forcedStatus: ImportTaskStatus | undefined =
+      summary.message && summary.conflicts === 0 ? 'failed' : undefined;
     const task = await this.saveTaskSummary(batchId, summary, forcedStatus);
     summary.taskId = task.taskId;
 
     if (anomalyGroups.length) {
-      this.anomalyStore.register(batchId, task.id, anomalyGroups.map((g) => ({
-        anomalyId: randomUUID(),
-        areaName: g.areaName,
-        timestamp: g.timestamp,
-        type: g.type,
-        variants: g.variants.map((v) => this.toVariantRecord(v)),
-      }))
+      this.anomalyStore.register(
+        batchId,
+        task.id,
+        anomalyGroups.map((g) => ({
+          anomalyId: randomUUID(),
+          areaName: g.areaName,
+          timestamp: g.timestamp,
+          type: g.type,
+          variants: g.variants.map((v) => this.toVariantRecord(v)),
+        })),
       );
     }
 
     return summary;
   }
 
-  private buildFailedSummary(input: ImportPathInput, error: unknown): FileImportSummary {
+  private buildFailedSummary(
+    input: ImportPathInput,
+    error: unknown,
+  ): FileImportSummary {
     const absolutePath = path.resolve(input.path);
     return {
       filePath: absolutePath,
@@ -639,7 +758,12 @@ export class ExcelImportService implements OnModuleInit {
     forcedStatus?: ImportTaskStatus,
   ): Promise<ImportTask> {
     const status: ImportTaskStatus =
-      forcedStatus ?? (summary.conflicts && summary.conflicts > 0 ? 'pending' : summary.imported > 0 ? 'completed' : 'pending');
+      forcedStatus ??
+      (summary.conflicts && summary.conflicts > 0
+        ? 'pending'
+        : summary.imported > 0
+          ? 'completed'
+          : 'pending');
 
     const task = this.importTaskRepository.create({
       taskId: randomUUID(),
@@ -666,9 +790,14 @@ export class ExcelImportService implements OnModuleInit {
     return this.importTaskRepository.save(task);
   }
 
-  private async saveAnomalies(task: ImportTask, groups: conflictGroup[]): Promise<void> { }
+  private async saveAnomalies(
+    task: ImportTask,
+    groups: conflictGroup[],
+  ): Promise<void> {}
 
-  private toVariantRecord(variant: AnomalyVariantAggregate): AnomalyVariantRecord {
+  private toVariantRecord(
+    variant: AnomalyVariantAggregate,
+  ): AnomalyVariantRecord {
     return {
       variantId: variant.variantId,
       temperature: variant.temperature,
@@ -683,10 +812,16 @@ export class ExcelImportService implements OnModuleInit {
       })),
     };
   }
-  
-  private normalizeVariantRecord(variant: AnomalyVariantRecord, index: number): AnomalyVariantDto {
+
+  private normalizeVariantRecord(
+    variant: AnomalyVariantRecord,
+    index: number,
+  ): AnomalyVariantDto {
     const fallbackId = `${variant.temperature ?? 'null'}-${variant.humidity ?? 'null'}-${index}`;
-    const totalCount = this.pickVariantNumber(variant.totalCount, (variant as unknown as LegacyVariantRecord)?.count);
+    const totalCount = this.pickVariantNumber(
+      variant.totalCount,
+      (variant as unknown as LegacyVariantRecord)?.count,
+    );
     const newCount = this.pickVariantNumber(variant.newCount, totalCount);
     const existingCount = this.pickVariantNumber(variant.existingCount, 0);
     const sourceSummaries = this.normalizeSourceSummaries(variant);
@@ -702,8 +837,13 @@ export class ExcelImportService implements OnModuleInit {
     };
   }
 
-  private normalizeSourceSummaries(variant: AnomalyVariantRecord): AnomalySourceSummaryRecord[] {
-    if (Array.isArray(variant.sourceSummaries) && variant.sourceSummaries.length) {
+  private normalizeSourceSummaries(
+    variant: AnomalyVariantRecord,
+  ): AnomalySourceSummaryRecord[] {
+    if (
+      Array.isArray(variant.sourceSummaries) &&
+      variant.sourceSummaries.length
+    ) {
       return variant.sourceSummaries.map((summary) => ({
         label: summary.label,
         count: summary.count,
@@ -711,7 +851,8 @@ export class ExcelImportService implements OnModuleInit {
       }));
     }
 
-    const legacy = (variant as unknown as LegacyVariantRecord).fileSources ?? [];
+    const legacy =
+      (variant as unknown as LegacyVariantRecord).fileSources ?? [];
     if (!Array.isArray(legacy) || !legacy.length) {
       return [
         {
@@ -729,7 +870,10 @@ export class ExcelImportService implements OnModuleInit {
     }));
   }
 
-  private pickVariantNumber(primary: number | undefined, fallback: number | undefined): number {
+  private pickVariantNumber(
+    primary: number | undefined,
+    fallback: number | undefined,
+  ): number {
     if (typeof primary === 'number' && Number.isFinite(primary)) {
       return primary;
     }
@@ -739,7 +883,10 @@ export class ExcelImportService implements OnModuleInit {
     return 0;
   }
 
-  private archiveOriginalFile(filePath: string, originalName?: string): {
+  private archiveOriginalFile(
+    filePath: string,
+    originalName?: string,
+  ): {
     destination: string;
     relativePath: string;
     publicUrl: string;
@@ -763,7 +910,10 @@ export class ExcelImportService implements OnModuleInit {
     return { destination, relativePath, publicUrl };
   }
 
-  private parseExcelFile(filePath: string, fileUrl: string): { records: ParsedRecord[]; skipped: number } {
+  private parseExcelFile(
+    filePath: string,
+    fileUrl: string,
+  ): { records: ParsedRecord[]; skipped: number } {
     const workbook = XLSX.readFile(filePath, {
       cellDates: true,
       sheets: undefined,
@@ -852,7 +1002,10 @@ export class ExcelImportService implements OnModuleInit {
 
     for (const record of records) {
       if (!areaCache.has(record.areaCode)) {
-        const area = await this.getOrCreateArea(record.areaCode, record.areaName);
+        const area = await this.getOrCreateArea(
+          record.areaCode,
+          record.areaName,
+        );
         areaCache.set(record.areaCode, area);
       }
     }
@@ -883,7 +1036,10 @@ export class ExcelImportService implements OnModuleInit {
     return code?.trim().toUpperCase() || 'UNKNOWN';
   }
 
-  private displayFileSource(source: string | null | undefined, fallback: string): string {
+  private displayFileSource(
+    source: string | null | undefined,
+    fallback: string,
+  ): string {
     if (source && source.trim()) {
       return source;
     }
@@ -894,7 +1050,9 @@ export class ExcelImportService implements OnModuleInit {
     const normalizedCode = this.normalizeAreaCode(code);
     const normalizedName = name.trim() || `区域${normalizedCode}`;
 
-    let area = await this.areaRepository.findOne({ where: { code: normalizedCode } });
+    let area = await this.areaRepository.findOne({
+      where: { code: normalizedCode },
+    });
 
     if (!area) {
       area = this.areaRepository.create({
@@ -902,14 +1060,20 @@ export class ExcelImportService implements OnModuleInit {
         name: normalizedName,
         location: null,
       });
-    } else if (this.shouldUpdateAreaName(area.name, normalizedName, normalizedCode)) {
+    } else if (
+      this.shouldUpdateAreaName(area.name, normalizedName, normalizedCode)
+    ) {
       area.name = normalizedName;
     }
 
     return this.areaRepository.save(area);
   }
 
-  private extractAreaInfos(filePath: string, rows: unknown[][], headers?: string[]): AreaInfo[] {
+  private extractAreaInfos(
+    filePath: string,
+    rows: unknown[][],
+    headers?: string[],
+  ): AreaInfo[] {
     const candidates = new Map<string, AreaInfo>();
 
     const register = (raw: string | null | undefined) => {
@@ -964,7 +1128,9 @@ export class ExcelImportService implements OnModuleInit {
         areaPattern.lastIndex = 0;
         while ((match = areaPattern.exec(normalized)) !== null) {
           let candidate = match[0];
-          const reorder = candidate.match(/^(\d+[A-Za-z]*)(检隔室|检疫隔离室)$/);
+          const reorder = candidate.match(
+            /^(\d+[A-Za-z]*)(检隔室|检疫隔离室)$/,
+          );
           if (reorder) {
             candidate = `${reorder[2]}${reorder[1]}`;
           }
@@ -996,7 +1162,9 @@ export class ExcelImportService implements OnModuleInit {
     return Array.from(candidates.values());
   }
 
-  private async loadExistingRecords(records: ParsedRecord[]): Promise<ParsedRecord[]> {
+  private async loadExistingRecords(
+    records: ParsedRecord[],
+  ): Promise<ParsedRecord[]> {
     if (!records.length) {
       return [];
     }
@@ -1032,7 +1200,9 @@ export class ExcelImportService implements OnModuleInit {
       return [];
     }
 
-    const areas = await this.areaRepository.find({ where: { code: In(areaCodes) } });
+    const areas = await this.areaRepository.find({
+      where: { code: In(areaCodes) },
+    });
     if (!areas.length) {
       return [];
     }
@@ -1059,7 +1229,9 @@ export class ExcelImportService implements OnModuleInit {
       return [];
     }
 
-    const existing = await this.sensorDataRepository.find({ where: conditions });
+    const existing = await this.sensorDataRepository.find({
+      where: conditions,
+    });
     if (!existing.length) {
       return [];
     }
@@ -1117,7 +1289,8 @@ export class ExcelImportService implements OnModuleInit {
       matches.add(room);
     }
 
-    const genericPattern = /(动物室\d+[A-Za-z]*|检疫隔离室\d+[A-Za-z]*|检疫室\d+[A-Za-z]*|检隔室\d+[A-Za-z]*|隔离室\d+[A-Za-z]*|\d+[A-Za-z]*检疫隔离室|\d+[A-Za-z]*检疫室|\d+[A-Za-z]*检隔室|\d+[A-Za-z]*隔离室)/g;
+    const genericPattern =
+      /(动物室\d+[A-Za-z]*|检疫隔离室\d+[A-Za-z]*|检疫室\d+[A-Za-z]*|检隔室\d+[A-Za-z]*|隔离室\d+[A-Za-z]*|\d+[A-Za-z]*检疫隔离室|\d+[A-Za-z]*检疫室|\d+[A-Za-z]*检隔室|\d+[A-Za-z]*隔离室)/g;
     const normalized = fileName.replace(/\s+/g, '');
     const genericMatches = normalized.match(genericPattern) ?? [];
     for (const value of genericMatches) {
@@ -1138,8 +1311,11 @@ export class ExcelImportService implements OnModuleInit {
       return [];
     }
 
-    const delimitIndex = normalized.search(/(温度|湿度|temp|humi|rh|压差|pressure|indoor|outdoor)/i);
-    const base = delimitIndex !== -1 ? normalized.slice(0, delimitIndex) : normalized;
+    const delimitIndex = normalized.search(
+      /(温度|湿度|temp|humi|rh|压差|pressure|indoor|outdoor)/i,
+    );
+    const base =
+      delimitIndex !== -1 ? normalized.slice(0, delimitIndex) : normalized;
     const cleaned = base.replace(/[-_:：；;，,\.\/\\\(\)（）%％℃°\[\]{}]/g, '');
 
     if (!cleaned || !/\d/.test(cleaned)) {
@@ -1152,9 +1328,13 @@ export class ExcelImportService implements OnModuleInit {
   private deriveAreaInfoFromName(rawName: string): AreaInfo {
     const trimmed = rawName?.trim() ?? '';
     const normalized = trimmed.replace(/\s+/g, '');
-    const baseMatch = normalized.match(/(动物室\d+[A-Za-z]*|检疫隔离室\d+[A-Za-z]*|检疫室\d+[A-Za-z]*|检隔室\d+[A-Za-z]*|隔离室\d+[A-Za-z]*)/);
+    const baseMatch = normalized.match(
+      /(动物室\d+[A-Za-z]*|检疫隔离室\d+[A-Za-z]*|检疫室\d+[A-Za-z]*|检隔室\d+[A-Za-z]*|隔离室\d+[A-Za-z]*)/,
+    );
     let display = baseMatch ? baseMatch[0] : trimmed;
-    const reorder = display.match(/^(\d+[A-Za-z]*)(检疫隔离室|检疫室|检隔室|隔离室|动物室)$/);
+    const reorder = display.match(
+      /^(\d+[A-Za-z]*)(检疫隔离室|检疫室|检隔室|隔离室|动物室)$/,
+    );
     if (reorder) {
       display = `${reorder[2]}${reorder[1]}`;
     }
@@ -1165,7 +1345,11 @@ export class ExcelImportService implements OnModuleInit {
     return { code, name };
   }
 
-  private shouldUpdateAreaName(currentName: string | undefined, incomingName: string, code: string): boolean {
+  private shouldUpdateAreaName(
+    currentName: string | undefined,
+    incomingName: string,
+    code: string,
+  ): boolean {
     const normalize = (value: string | undefined) => value?.trim() ?? '';
     const current = normalize(currentName);
     const incoming = normalize(incomingName);
@@ -1205,7 +1389,9 @@ export class ExcelImportService implements OnModuleInit {
     const scanLimit = Math.min(rows.length, 15);
     for (let i = 0; i < scanLimit; i += 1) {
       const joined = (rows[i] ?? [])
-        .map((cell) => (cell === null || cell === undefined ? '' : String(cell)))
+        .map((cell) =>
+          cell === null || cell === undefined ? '' : String(cell),
+        )
         .join('');
       const normalized = joined.replace(/\s+/g, '').toLowerCase();
       if (
@@ -1226,7 +1412,10 @@ export class ExcelImportService implements OnModuleInit {
     return -1;
   }
 
-  private identifyColumns(headers: string[], areaInfos: AreaInfo[]): {
+  private identifyColumns(
+    headers: string[],
+    areaInfos: AreaInfo[],
+  ): {
     timeIndex: number;
     areaColumns: Map<string, AreaColumnMapping>;
   } {
@@ -1255,7 +1444,8 @@ export class ExcelImportService implements OnModuleInit {
     ): number => {
       for (const key of candidateKeys) {
         const index = normalizedHeaders.findIndex(
-          (header) => header.includes(key) && keywords.some((kw) => header.includes(kw)),
+          (header) =>
+            header.includes(key) && keywords.some((kw) => header.includes(kw)),
         );
         if (index !== -1) {
           return index;
@@ -1273,8 +1463,14 @@ export class ExcelImportService implements OnModuleInit {
         candidateKeys.add(area.code.replace(/\s+/g, '').toLowerCase());
       }
 
-      const temperatureSpecific = findSpecificIndex(candidateKeys, TEMP_KEYWORDS);
-      const humiditySpecific = findSpecificIndex(candidateKeys, HUMIDITY_KEYWORDS);
+      const temperatureSpecific = findSpecificIndex(
+        candidateKeys,
+        TEMP_KEYWORDS,
+      );
+      const humiditySpecific = findSpecificIndex(
+        candidateKeys,
+        HUMIDITY_KEYWORDS,
+      );
 
       const temperatureIndex =
         temperatureSpecific !== -1
@@ -1294,7 +1490,8 @@ export class ExcelImportService implements OnModuleInit {
       }
 
       areaColumns.set(area.code, {
-        temperatureIndex: temperatureIndex === -1 ? undefined : temperatureIndex,
+        temperatureIndex:
+          temperatureIndex === -1 ? undefined : temperatureIndex,
         humidityIndex: humidityIndex === -1 ? undefined : humidityIndex,
       });
     }
@@ -1339,7 +1536,10 @@ export class ExcelImportService implements OnModuleInit {
     return this.snapToInterval(ts, 15);
   }
 
-  private resolveDuplicateRecords(records: ParsedRecord[], existingRecords: ParsedRecord[]): {
+  private resolveDuplicateRecords(
+    records: ParsedRecord[],
+    existingRecords: ParsedRecord[],
+  ): {
     resolvedRecords: ParsedRecord[];
     duplicateCount: number;
     anomalyGroups: conflictGroup[];
@@ -1404,16 +1604,24 @@ export class ExcelImportService implements OnModuleInit {
         continue;
       }
 
-      const conflictType: ImportAnomalyType = hasMultipleVariants ? 'conflict' : 'duplicate';
+      const conflictType: ImportAnomalyType = hasMultipleVariants
+        ? 'conflict'
+        : 'duplicate';
       if (conflictType === 'duplicate') {
         duplicateCount += newEntries.length;
       }
 
-      const variants = variantBuckets.map((bucket) => this.buildVariantAggregate(bucket));
+      const variants = variantBuckets.map((bucket) =>
+        this.buildVariantAggregate(bucket),
+      );
 
       anomalyGroups.push({
         areaCode,
-        areaName: this.pickConflictAreaName(newEntries, existingEntries, areaName),
+        areaName: this.pickConflictAreaName(
+          newEntries,
+          existingEntries,
+          areaName,
+        ),
         timestamp,
         type: conflictType,
         variants,
@@ -1423,7 +1631,9 @@ export class ExcelImportService implements OnModuleInit {
     return { resolvedRecords, duplicateCount, anomalyGroups };
   }
 
-  private groupEntriesByVariant(entries: ParsedRecord[]): AnomalyVariantBucket[] {
+  private groupEntriesByVariant(
+    entries: ParsedRecord[],
+  ): AnomalyVariantBucket[] {
     const buckets = new Map<string, AnomalyVariantBucket>();
     for (const entry of entries) {
       const key = this.buildVariantKey(entry.temperature, entry.humidity);
@@ -1444,7 +1654,9 @@ export class ExcelImportService implements OnModuleInit {
     return Array.from(buckets.values());
   }
 
-  private buildVariantAggregate(bucket: AnomalyVariantBucket): AnomalyVariantAggregate {
+  private buildVariantAggregate(
+    bucket: AnomalyVariantBucket,
+  ): AnomalyVariantAggregate {
     const totalCount = bucket.entries.length;
     const newCount = bucket.entries.filter((entry) => !entry.isExisting).length;
     const existingCount = totalCount - newCount;
@@ -1460,10 +1672,14 @@ export class ExcelImportService implements OnModuleInit {
     };
   }
 
-  private buildSourceSummaries(entries: ParsedRecord[]): AnomalySourceSummaryRecord[] {
+  private buildSourceSummaries(
+    entries: ParsedRecord[],
+  ): AnomalySourceSummaryRecord[] {
     const summaries = new Map<string, AnomalySourceSummaryRecord>();
     for (const entry of entries) {
-      const type: AnomalySourceSummaryRecord['type'] = entry.isExisting ? 'existing' : 'new';
+      const type: AnomalySourceSummaryRecord['type'] = entry.isExisting
+        ? 'existing'
+        : 'new';
       const baseLabel = entry.isExisting
         ? '数据库已有记录'
         : this.normalizeImportSourceLabel(entry.fileSource);
@@ -1484,7 +1700,9 @@ export class ExcelImportService implements OnModuleInit {
     return Array.from(summaries.values());
   }
 
-  private buildResolvedFileSource(variant: AnomalyVariantRecord): string | null {
+  private buildResolvedFileSource(
+    variant: AnomalyVariantRecord,
+  ): string | null {
     const newLabels = variant.sourceSummaries
       .filter((summary) => summary.type === 'new')
       .map((summary) => summary.label.replace(/^导入文件：/, ''));
@@ -1501,7 +1719,10 @@ export class ExcelImportService implements OnModuleInit {
       new Set(
         entries
           .map((entry) => entry.fileSource)
-          .filter((source): source is string => typeof source === 'string' && source.trim().length > 0),
+          .filter(
+            (source): source is string =>
+              typeof source === 'string' && source.trim().length > 0,
+          ),
       ),
     );
 
@@ -1520,11 +1741,16 @@ export class ExcelImportService implements OnModuleInit {
     return newEntries[0]?.areaName ?? existingEntries[0]?.areaName ?? fallback;
   }
 
-  private buildVariantKey(temperature: string | null, humidity: string | null): string {
+  private buildVariantKey(
+    temperature: string | null,
+    humidity: string | null,
+  ): string {
     return `${temperature ?? 'NULL'}|${humidity ?? 'NULL'}`;
   }
 
-  private normalizeImportSourceLabel(source: string | null | undefined): string {
+  private normalizeImportSourceLabel(
+    source: string | null | undefined,
+  ): string {
     if (!source) {
       return '未知来源';
     }
@@ -1539,7 +1765,9 @@ export class ExcelImportService implements OnModuleInit {
 
     try {
       const parsed = new URL(trimmed);
-      const segments = parsed.pathname.split('/').filter((segment) => segment.length > 0);
+      const segments = parsed.pathname
+        .split('/')
+        .filter((segment) => segment.length > 0);
       const lastSegment = segments.pop();
       if (lastSegment) {
         return decodeURIComponent(lastSegment);
@@ -1604,11 +1832,8 @@ export class ExcelImportService implements OnModuleInit {
 
     return (Math.round(numeric * 100) / 100).toFixed(2);
   }
-
 }
 
 const TIME_KEYWORDS = ['时间', 'date', 'datetime', 'time'];
 const TEMP_KEYWORDS = ['温度', 'temp'];
 const HUMIDITY_KEYWORDS = ['湿度', 'humi', 'rh'];
-
-

@@ -1,5 +1,3 @@
-/// <reference types="node" />
-
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import { resolve } from 'node:path';
@@ -23,7 +21,7 @@ export default defineConfig({
     port: 3006,
     host: true,
     strictPort: true,
-    allowedHosts: ['evian.zkenhealth.com', '192.168.1.231', 'localhost'],
+    allowedHosts: ['evian.zkenhealth.com', '192.168.1.236', 'localhost'],
   },
   test: {
     environment: 'jsdom',

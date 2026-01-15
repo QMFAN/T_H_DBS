@@ -1,17 +1,25 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common'
-import { InjectDataSource } from '@nestjs/typeorm'
-import type { DataSource } from 'typeorm'
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { InjectDataSource } from '@nestjs/typeorm';
+import type { DataSource } from 'typeorm';
 
 @Injectable()
 export class SchemaInitService implements OnModuleInit {
-  private readonly logger = new Logger(SchemaInitService.name)
+  private readonly logger = new Logger(SchemaInitService.name);
   constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
 
   async onModuleInit() {
-    await this.ensureAreaDefaults().catch((e) => this.logger.warn(`Create table skipped: ${(e as Error).message}`))
-    await this.syncExistingAreas().catch((e) => this.logger.warn(`Sync areas skipped: ${(e as Error).message}`))
-    await this.ensureInsertTrigger().catch((e) => this.logger.warn(`Trigger not created: ${(e as Error).message}`))
-    await this.dropLegacyTables().catch((e) => this.logger.warn(`Drop legacy tables skipped: ${(e as Error).message}`))
+    await this.ensureAreaDefaults().catch((e) =>
+      this.logger.warn(`Create table skipped: ${(e as Error).message}`),
+    );
+    await this.syncExistingAreas().catch((e) =>
+      this.logger.warn(`Sync areas skipped: ${(e as Error).message}`),
+    );
+    await this.ensureInsertTrigger().catch((e) =>
+      this.logger.warn(`Trigger not created: ${(e as Error).message}`),
+    );
+    await this.dropLegacyTables().catch((e) =>
+      this.logger.warn(`Drop legacy tables skipped: ${(e as Error).message}`),
+    );
   }
 
   private async ensureAreaDefaults() {
@@ -33,9 +41,9 @@ CREATE TABLE IF NOT EXISTS area_defaults (
   PRIMARY KEY (id),
   UNIQUE KEY uniq_area_code (area_code)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-    `
-    await this.dataSource.query(sql)
-    this.logger.log('Ensured table area_defaults exists')
+    `;
+    await this.dataSource.query(sql);
+    this.logger.log('Ensured table area_defaults exists');
   }
 
   private async syncExistingAreas() {
@@ -45,36 +53,42 @@ CREATE TABLE IF NOT EXISTS area_defaults (
     )
     SELECT a.code, 20, 26, 40, 70, 30, 30, 30, 0, NULL
     FROM areas a
-    WHERE NOT EXISTS (SELECT 1 FROM area_defaults d WHERE d.area_code COLLATE utf8mb4_unicode_ci = a.code COLLATE utf8mb4_unicode_ci);`
-    await this.dataSource.query(sql)
-    this.logger.log('Synced existing areas into area_defaults')
+    WHERE NOT EXISTS (SELECT 1 FROM area_defaults d WHERE d.area_code COLLATE utf8mb4_unicode_ci = a.code COLLATE utf8mb4_unicode_ci);`;
+    await this.dataSource.query(sql);
+    this.logger.log('Synced existing areas into area_defaults');
   }
 
   private async ensureInsertTrigger() {
     try {
-      const [bin] = await this.dataSource.query('SELECT @@log_bin AS val')
-      const [trust] = await this.dataSource.query('SELECT @@log_bin_trust_function_creators AS val')
+      const [bin] = await this.dataSource.query('SELECT @@log_bin AS val');
+      const [trust] = await this.dataSource.query(
+        'SELECT @@log_bin_trust_function_creators AS val',
+      );
       if (bin?.val === 1 && trust?.val !== 1) {
-        this.logger.warn('Binary logging enabled and log_bin_trust_function_creators != 1, skip trigger creation')
-        return
+        this.logger.warn(
+          'Binary logging enabled and log_bin_trust_function_creators != 1, skip trigger creation',
+        );
+        return;
       }
     } catch {
       // ignore variable read errors
     }
-    await this.dataSource.query('DROP TRIGGER IF EXISTS areas_defaults_sync;')
+    await this.dataSource.query('DROP TRIGGER IF EXISTS areas_defaults_sync;');
     const trigger = `CREATE TRIGGER areas_defaults_sync AFTER INSERT ON areas
     FOR EACH ROW
     INSERT IGNORE INTO area_defaults (
       area_code, temp_min, temp_max, humidity_min, humidity_max,
       temp_duration_min, humidity_duration_min, gap_tolerance_minutes, tolerance_normal_budget, updated_by
-    ) VALUES (NEW.code, 20, 26, 40, 70, 30, 30, 30, 0, NULL);`
-    await this.dataSource.query(trigger)
-    this.logger.log('Ensured trigger areas_defaults_sync exists')
+    ) VALUES (NEW.code, 20, 26, 40, 70, 30, 30, 30, 0, NULL);`;
+    await this.dataSource.query(trigger);
+    this.logger.log('Ensured trigger areas_defaults_sync exists');
   }
 
   private async dropLegacyTables() {
-    await this.dataSource.query('DROP TABLE IF EXISTS thresholds')
-    await this.dataSource.query('DROP TABLE IF EXISTS import_anomalies')
-    this.logger.log('Dropped legacy tables thresholds and import_anomalies if present')
+    await this.dataSource.query('DROP TABLE IF EXISTS thresholds');
+    await this.dataSource.query('DROP TABLE IF EXISTS import_anomalies');
+    this.logger.log(
+      'Dropped legacy tables thresholds and import_anomalies if present',
+    );
   }
 }

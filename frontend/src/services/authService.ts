@@ -7,7 +7,13 @@ export const authService = {
   },
   async callback(params: { code: string; state: string }) {
     const res = await http.get('/auth/wecom/callback', { params })
-    return res.data as { access_token: string; refresh_token: string; user: { id: number; username: string; role: string } }
+    return res.data as {
+      success?: boolean
+      message?: string
+      access_token?: string
+      refresh_token?: string
+      user?: { id: number; username: string; role: string }
+    }
   },
   async passwordLogin(username: string, password: string) {
     const res = await http.post('/auth/login', { username, password })

@@ -10,33 +10,33 @@ if(-not (Get-Command node -ErrorAction SilentlyContinue)){ Write-Host "node is n
 if(-not (Get-Command npm -ErrorAction SilentlyContinue)){ Write-Host "npm is not found"; exit 1 }
 if(-not (Get-Command pm2 -ErrorAction SilentlyContinue)){
   Write-Host ("[{0}] Installing PM2 globally..." -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'))
-  & npm i -g pm2
+  cmd /c npm i -g pm2
   if($LASTEXITCODE -ne 0){ Write-Host "Failed to install PM2"; exit 1 }
 }
 
 Write-Host ("[{0}] Building frontend: npm install" -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'))
 Push-Location (Join-Path $root 'frontend')
-& npm install
+cmd /c npm install
 if($LASTEXITCODE -ne 0){ Write-Host "Frontend dependency install failed"; Pop-Location; exit 1 }
 Write-Host ("[{0}] Building frontend: npm run build" -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'))
-& npm run build
+cmd /c npm run build
 if($LASTEXITCODE -ne 0){ Write-Host "Frontend build failed"; Pop-Location; exit 1 }
 Pop-Location
 
 Write-Host ("[{0}] Building backend: npm install" -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'))
 Push-Location (Join-Path $root 'backend')
-& npm install
+cmd /c npm install
 if($LASTEXITCODE -ne 0){ Write-Host "Backend dependency install failed"; Pop-Location; exit 1 }
 Write-Host ("[{0}] Building backend: npm run build" -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'))
-& npm run build
+cmd /c npm run build
 if($LASTEXITCODE -ne 0){ Write-Host "Backend build failed"; Pop-Location; exit 1 }
 Pop-Location
 
 Write-Host ("[{0}] Starting backend with PM2..." -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'))
 $ecos = Join-Path $root 'backend\ecosystem.config.js'
-& pm2 start $ecos --env production --update-env
+cmd /c pm2 start $ecos --env production --update-env
 if($LASTEXITCODE -ne 0){ Write-Host "Backend start failed"; exit 1 }
-& pm2 save | Out-Null
+cmd /c pm2 save | Out-Null
 Start-Sleep -Seconds 3
 
 Write-Host ("[{0}] Validating services..." -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'))

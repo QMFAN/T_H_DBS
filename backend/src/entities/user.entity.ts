@@ -1,30 +1,37 @@
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn, Index } from 'typeorm'
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+  Index,
+} from 'typeorm';
 
 @Entity('users')
 export class UserEntity {
   @PrimaryGeneratedColumn()
-  id!: number
+  id!: number;
 
   @Index({ unique: true })
   @Column({ type: 'varchar', length: 100 })
-  username!: string
+  username!: string;
 
   @Index({ unique: true })
   @Column({ type: 'varchar', length: 100, nullable: true })
-  wecom_user_id?: string | null
+  wecom_user_id?: string | null;
 
   @Column({ type: 'varchar', length: 255, nullable: true })
-  password_hash?: string | null
+  password_hash?: string | null;
 
   @Column({ type: 'varchar', length: 20, default: 'user' })
-  role!: 'admin' | 'manager' | 'user'
+  role!: 'admin' | 'manager' | 'user';
 
   @Column({ type: 'int', default: 1 })
-  status!: number
+  status!: number;
 
   @CreateDateColumn()
-  created_at!: Date
+  created_at!: Date;
 
   @UpdateDateColumn()
-  updated_at!: Date
+  updated_at!: Date;
 }

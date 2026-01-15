@@ -28,8 +28,14 @@ async function bootstrap() {
   app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
   const defaultStorage = join(process.cwd(), 'storage', 'imports');
-  const storageDir = configService.get<string>('IMPORT_STORAGE_DIR', defaultStorage);
-  const publicBaseUrl = configService.get<string>('IMPORT_STORAGE_BASE_URL', '/imports');
+  const storageDir = configService.get<string>(
+    'IMPORT_STORAGE_DIR',
+    defaultStorage,
+  );
+  const publicBaseUrl = configService.get<string>(
+    'IMPORT_STORAGE_BASE_URL',
+    '/imports',
+  );
   const staticPath = normalizePublicPath(publicBaseUrl);
 
   app.use(
@@ -37,7 +43,10 @@ async function bootstrap() {
     express.static(storageDir, {
       setHeaders(res, filePath) {
         const fileName = basename(filePath);
-        res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`);
+        res.setHeader(
+          'Content-Disposition',
+          `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`,
+        );
       },
     }),
   );
@@ -48,7 +57,10 @@ async function bootstrap() {
       if (!raw || raw.trim() === '') {
         return callback(null, true);
       }
-      const list = raw.split(',').map((s) => s.trim()).filter(Boolean);
+      const list = raw
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
       if (!origin) return callback(null, true);
       if (list.includes(origin)) return callback(null, true);
       return callback(new Error(`Origin ${origin} not allowed`), false);

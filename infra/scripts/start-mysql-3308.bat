@@ -8,6 +8,7 @@ set "MYSQL_DATA=%PROJECT_DIR%\infra\mysql\mysql_data\data"
 set "MYSQLD="
 
 if not "%MYSQL_HOME%"=="" if exist "%MYSQL_HOME%\bin\mysqld.exe" set "MYSQLD=%MYSQL_HOME%\bin\mysqld.exe"
+if "%MYSQLD%"=="" if exist "%ProgramFiles%\MySQL\MySQL Server 9.5\bin\mysqld.exe" set "MYSQLD=%ProgramFiles%\MySQL\MySQL Server 9.5\bin\mysqld.exe"
 if "%MYSQLD%"=="" if exist "%ProgramFiles%\MySQL\MySQL Server 9.3\bin\mysqld.exe" set "MYSQLD=%ProgramFiles%\MySQL\MySQL Server 9.3\bin\mysqld.exe"
 if "%MYSQLD%"=="" if exist "%ProgramFiles%\MySQL\MySQL Server 9.2\bin\mysqld.exe" set "MYSQLD=%ProgramFiles%\MySQL\MySQL Server 9.2\bin\mysqld.exe"
 if "%MYSQLD%"=="" if exist "%ProgramFiles%\MySQL\MySQL Server 9.1\bin\mysqld.exe" set "MYSQLD=%ProgramFiles%\MySQL\MySQL Server 9.1\bin\mysqld.exe"

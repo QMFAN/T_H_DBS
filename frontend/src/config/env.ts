@@ -6,8 +6,7 @@ interface AppConfig {
 const stripTrailingSlash = (value: string): string => value.replace(/\/$/, '');
 
 const resolveApiBase = (): string => {
-  const raw = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3005/api';
-  return stripTrailingSlash(raw);
+  return '/api';
 };
 
 const resolveImportsBase = (apiBaseUrl: string): string => {

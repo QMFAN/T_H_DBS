@@ -1,6 +1,16 @@
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 
-export type ImportTaskStatus = 'completed' | 'pending' | 'processing' | 'failed';
+export type ImportTaskStatus =
+  | 'completed'
+  | 'pending'
+  | 'processing'
+  | 'failed';
 
 @Entity({ name: 'import_tasks' })
 export class ImportTask {
@@ -43,7 +53,12 @@ export class ImportTask {
   @Column({ name: 'anomalies_total', type: 'int', unsigned: true, default: 0 })
   anomaliesTotal!: number;
 
-  @Column({ name: 'anomalies_processed', type: 'int', unsigned: true, default: 0 })
+  @Column({
+    name: 'anomalies_processed',
+    type: 'int',
+    unsigned: true,
+    default: 0,
+  })
   anomaliesProcessed!: number;
 
   @Column({ name: 'skip_count', type: 'int', unsigned: true, default: 0 })
