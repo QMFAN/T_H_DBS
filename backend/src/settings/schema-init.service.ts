@@ -11,6 +11,16 @@ export class SchemaInitService implements OnModuleInit {
     await this.ensureAreaDefaults().catch((e) =>
       this.logger.warn(`Create table skipped: ${(e as Error).message}`),
     );
+    await this.ensureSensorDataTable().catch((e) =>
+      this.logger.warn(
+        `Create sensor_data table skipped: ${(e as Error).message}`,
+      ),
+    );
+    await this.ensureImportTasksTable().catch((e) =>
+      this.logger.warn(
+        `Create import_tasks table skipped: ${(e as Error).message}`,
+      ),
+    );
     await this.syncExistingAreas().catch((e) =>
       this.logger.warn(`Sync areas skipped: ${(e as Error).message}`),
     );
@@ -44,6 +54,60 @@ CREATE TABLE IF NOT EXISTS area_defaults (
     `;
     await this.dataSource.query(sql);
     this.logger.log('Ensured table area_defaults exists');
+  }
+
+  private async ensureSensorDataTable() {
+    const sql = `
+CREATE TABLE IF NOT EXISTS sensor_data (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  area_id BIGINT UNSIGNED NOT NULL,
+  timestamp DATETIME NOT NULL,
+  temperature DECIMAL(5,2) NULL,
+  humidity DECIMAL(5,2) NULL,
+  file_source VARCHAR(255) NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_sensor_data_area_timestamp (area_id, timestamp),
+  KEY idx_sensor_data_timestamp (timestamp)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `;
+    await this.dataSource.query(sql);
+    this.logger.log('Ensured table sensor_data exists');
+  }
+
+  private async ensureImportTasksTable() {
+    const sql = `
+CREATE TABLE IF NOT EXISTS import_tasks (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  task_id VARCHAR(36) NOT NULL,
+  batch_id VARCHAR(36) NOT NULL,
+  file_name VARCHAR(255) NOT NULL,
+  stored_path VARCHAR(512) NULL,
+  file_url VARCHAR(512) NULL,
+  status VARCHAR(20) NOT NULL,
+  records INT UNSIGNED NOT NULL DEFAULT 0,
+  skipped INT UNSIGNED NOT NULL DEFAULT 0,
+  imported INT UNSIGNED NOT NULL DEFAULT 0,
+  duplicates INT UNSIGNED NOT NULL DEFAULT 0,
+  conflicts INT UNSIGNED NOT NULL DEFAULT 0,
+  anomalies_total INT UNSIGNED NOT NULL DEFAULT 0,
+  anomalies_processed INT UNSIGNED NOT NULL DEFAULT 0,
+  skip_count INT UNSIGNED NOT NULL DEFAULT 0,
+  overwrite_count INT UNSIGNED NOT NULL DEFAULT 0,
+  auto_resolved INT UNSIGNED NOT NULL DEFAULT 0,
+  manual_resolved INT UNSIGNED NOT NULL DEFAULT 0,
+  message TEXT NULL,
+  progress_last_at DATETIME NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_import_tasks_task_id (task_id),
+  KEY idx_import_tasks_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `;
+    await this.dataSource.query(sql);
+    this.logger.log('Ensured table import_tasks exists');
   }
 
   private async syncExistingAreas() {

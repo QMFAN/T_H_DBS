@@ -36,6 +36,7 @@ frontend/.vite/
 .env.*
 
 infra/mysql/mysql_data/
+infra/mysql/mysql-9.5.0-winx64/
 
 exports/
 uploads/

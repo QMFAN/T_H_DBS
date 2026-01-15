@@ -148,7 +148,7 @@ const SettingsPage: FC = () => {
             ) },
           ]}
         />
-        <Drawer title={drawerTitle} open={drawerOpen} onClose={()=>setDrawerOpen(false)} width={360} destroyOnClose>
+        <Drawer title={drawerTitle} open={drawerOpen} onClose={()=>setDrawerOpen(false)} width={360} destroyOnHidden>
           <Form form={editForm} layout="vertical">
             <Form.Item label="温度下限" name="temp_min"><InputNumber step={0.1} style={{ width: '100%' }} /></Form.Item>
             <Form.Item label="温度上限" name="temp_max"><InputNumber step={0.1} style={{ width: '100%' }} /></Form.Item>

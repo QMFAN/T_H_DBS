@@ -43,7 +43,7 @@ const UsersPage: FC = () => {
             </Space>
           ) },
         ]} />
-        <Modal title="新增用户" open={openAdd} destroyOnClose onCancel={()=>setOpenAdd(false)} onOk={async ()=>{
+        <Modal title="新增用户" open={openAdd} destroyOnHidden onCancel={()=>setOpenAdd(false)} onOk={async ()=>{
           const v = await form.validateFields()
           const res = await http.post('/users', { username: v.username, role: v.role, status: 1 })
           const created = res.data

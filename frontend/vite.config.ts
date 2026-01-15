@@ -16,6 +16,16 @@ export default defineConfig({
     port: 3006,
     host: true,
     cors: true,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3005',
+        changeOrigin: true,
+      },
+      '/imports': {
+        target: 'http://localhost:3005',
+        changeOrigin: true,
+      },
+    },
   },
   preview: {
     port: 3006,

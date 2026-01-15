@@ -367,7 +367,13 @@ const SmartAnalysisPage: FC = () => {
             <Typography.Text strong>存在时间段（{queryRes?.availableRanges?.length ?? 0}）</Typography.Text>
                 <List grid={{ gutter: 12, column: 3 }} dataSource={queryRes.availableRanges || []} renderItem={(r) => (
                   <List.Item>
-                    <Card size="small" hoverable bordered style={{ borderColor: '#8c8c8c' }} bodyStyle={{ padding: 8 }}>
+                    <Card
+                      size="small"
+                      hoverable
+                      variant="outlined"
+                      style={{ borderColor: '#8c8c8c' }}
+                      styles={{ body: { padding: 8 } }}
+                    >
                       <Typography.Text>开始：{r.start}</Typography.Text>
                       <br />
                       <Typography.Text>结束：{r.end}</Typography.Text>
@@ -379,7 +385,13 @@ const SmartAnalysisPage: FC = () => {
                 <Typography.Text strong>缺失时间段（{missingDisplay?.length ?? 0}）：</Typography.Text>
                 <List grid={{ gutter: 12, column: 3 }} dataSource={missingDisplay || []} renderItem={(r) => (
                   <List.Item>
-                    <Card size="small" hoverable bordered style={{ borderColor: '#8c8c8c' }} bodyStyle={{ padding: 8 }}>
+                    <Card
+                      size="small"
+                      hoverable
+                      variant="outlined"
+                      style={{ borderColor: '#8c8c8c' }}
+                      styles={{ body: { padding: 8 } }}
+                    >
                       <Typography.Text>开始：{r.start}</Typography.Text>
                       <br />
                       <Typography.Text>结束：{r.end}</Typography.Text>
