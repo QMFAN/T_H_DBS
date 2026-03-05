@@ -13,7 +13,7 @@ function normalizePublicPath(raw?: string): string {
     const url = new URL(raw);
     const pathname = url.pathname.replace(/\/$/, '') || '/';
     return pathname.startsWith('/') ? pathname : `/${pathname}`;
-  } catch (error) {
+  } catch {
     const trimmed = raw.replace(/\/$/, '');
     return trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
   }
@@ -23,9 +23,12 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
 
-  // 增加请求体大小限制，支持批量操作
-  app.use(express.json({ limit: '50mb' }));
-  app.use(express.urlencoded({ limit: '50mb', extended: true }));
+  const requestBodyLimit = configService.get<string>(
+    'REQUEST_BODY_LIMIT',
+    '100mb',
+  );
+  app.use(express.json({ limit: requestBodyLimit }));
+  app.use(express.urlencoded({ limit: requestBodyLimit, extended: true }));
 
   const defaultStorage = join(process.cwd(), 'storage', 'imports');
   const storageDir = configService.get<string>(
@@ -51,22 +54,16 @@ async function bootstrap() {
     }),
   );
 
-  app.enableCors({
-    origin: (origin, callback) => {
-      const raw = configService.get<string>('ALLOWED_ORIGINS');
-      if (!raw || raw.trim() === '') {
-        return callback(null, true);
-      }
-      const list = raw
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean);
-      if (!origin) return callback(null, true);
-      if (list.includes(origin)) return callback(null, true);
-      return callback(new Error(`Origin ${origin} not allowed`), false);
-    },
-  });
+  const allowedOriginsRaw = configService.get<string>('ALLOWED_ORIGINS');
+  const allowedOrigins =
+    !allowedOriginsRaw || allowedOriginsRaw.trim() === ''
+      ? true
+      : allowedOriginsRaw
+          .split(',')
+          .map((item) => item.trim())
+          .filter(Boolean);
+  app.enableCors({ origin: allowedOrigins });
   app.setGlobalPrefix('api');
   await app.listen(process.env.PORT ?? 3005, '0.0.0.0');
 }
-bootstrap();
+void bootstrap();

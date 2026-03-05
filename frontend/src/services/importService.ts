@@ -10,6 +10,8 @@ import type {
 } from '../types/import';
 import type { RcFile } from 'antd/es/upload';
 
+const BULK_RESOLVE_CHUNK_SIZE = 500;
+
 const importService = {
   async fetchDashboardSummary(): Promise<ImportDashboardSummary> {
     const { data } = await http.get<ImportDashboardSummary>('/imports/summary');
@@ -45,9 +47,22 @@ const importService = {
     await importService.resolveConflict(conflictId, { action: 'overwrite', variantId });
   },
   async bulkResolveConflicts(payload: BulkResolveConflictsPayload): Promise<void> {
-    await http.post('/imports/conflicts/bulk-resolve', payload, {
-      timeout: 300000, // 5分钟超时，处理大量数据
-    });
+    const anomalyIds = Array.isArray(payload.anomalyIds) ? payload.anomalyIds : [];
+    if (!anomalyIds.length) {
+      await http.post('/imports/conflicts/bulk-resolve', payload, {
+        timeout: 300000,
+      });
+      return;
+    }
+    for (let index = 0; index < anomalyIds.length; index += BULK_RESOLVE_CHUNK_SIZE) {
+      const chunk = anomalyIds.slice(index, index + BULK_RESOLVE_CHUNK_SIZE);
+      await http.post('/imports/conflicts/bulk-resolve', {
+        ...payload,
+        anomalyIds: chunk,
+      }, {
+        timeout: 300000,
+      });
+    }
   },
   async resetData(): Promise<void> {
     await http.delete('/imports/reset');
@@ -62,7 +77,7 @@ const importService = {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
-      timeout: 300000, // 5分钟超时
+      timeout: 300000,
     });
     return data;
   },
